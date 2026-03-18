@@ -3,3 +3,7 @@ node_modules/
 .dev.vars
 *.log
 dist/
+server.js
+src/
+build.js
+public/
