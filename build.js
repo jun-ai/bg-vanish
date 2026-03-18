@@ -5,7 +5,6 @@ const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
 
 const workerJs = `
 const HTML = ${JSON.stringify(html)};
-
 const COOKIE_SECRET = 'bg-vanish-session-2026';
 
 function parseCookie(h) {
@@ -15,10 +14,15 @@ function parseCookie(h) {
   return c;
 }
 function setCookie(res, name, val, maxAge=604800) {
-  res.headers.append('Set-Cookie', \`\${name}=\${val}; Path=/; HttpOnly; SameSite=Lax; Max-Age=\${maxAge}\`);
+  res.headers.append('Set-Cookie', name + '=' + val + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + maxAge);
 }
 function clearCookie(res, name) {
-  res.headers.append('Set-Cookie', \`\${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0\`);
+  res.headers.append('Set-Cookie', name + '=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+}
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36).padStart(8, '0');
 }
 
 async function handleAuthCallback(request, env) {
@@ -27,7 +31,7 @@ async function handleAuthCallback(request, env) {
   if (!code) return json({error:'Missing code'}, 400);
   const redirectUri = url.protocol + '//' + url.host + '/api/auth/callback';
   try {
-    const clientId = env.GOOGLE_CLIENT_ID || '480367987155-k6bnrnt7trj6pekeo36fcipnlr0o1c18.apps.googleusercontent.com';
+    const clientId = env.GOOGLE_CLIENT_ID || '';
     const clientSecret = env.GOOGLE_CLIENT_SECRET || '';
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -39,7 +43,8 @@ async function handleAuthCallback(request, env) {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
-    const sessionToken = Buffer.from(sessionData).toString('base64url') + '.' + require('crypto').createHash('sha256').update(COOKIE_SECRET + sessionData).digest('base64url').slice(0,32);
+    const payloadB64 = btoa(sessionData);
+    const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
     const res = new Response(null, {status: 302, headers: new Headers({'Location': '/?auth=success'})});
     setCookie(res, 'session', sessionToken, 604800);
     return res;
@@ -51,11 +56,11 @@ function handleAuthMe(request) {
   const token = session.session;
   if (!token) return json({error:'Not authenticated'}, 401);
   try {
-    const [pb, sig] = token.split('.');
-    const payload = JSON.parse(Buffer.from(pb, 'base64url').toString());
-    if (payload.exp < Date.now()) { return json({error:'Session expired'}, 401); }
-    const expectedSig = require('crypto').createHash('sha256').update(COOKIE_SECRET + JSON.stringify(payload)).digest('base64url').slice(0,32);
-    if (sig !== expectedSig) return json({error:'Invalid session'}, 401);
+    const parts = token.split('.');
+    const payload = JSON.parse(atob(parts[0]));
+    if (payload.exp < Date.now()) return json({error:'Session expired'}, 401);
+    const expectedSig = simpleHash(COOKIE_SECRET + JSON.stringify(payload));
+    if (parts[1] !== expectedSig) return json({error:'Invalid session'}, 401);
     return json({id:payload.sub, name:payload.name, email:payload.email, picture:payload.picture});
   } catch(e) { return json({error:'Invalid session'}, 401); }
 }
