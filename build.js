@@ -27,7 +27,7 @@ async function handleAuthCallback(request, env) {
   if (!code) return json({error:'Missing code'}, 400);
   const redirectUri = url.protocol + '//' + url.host + '/api/auth/callback';
   try {
-    const clientId = env.GOOGLE_CLIENT_ID || '';
+    const clientId = env.GOOGLE_CLIENT_ID || '480367987155-k6bnrnt7trj6pekeo36fcipnlr0o1c18.apps.googleusercontent.com';
     const clientSecret = env.GOOGLE_CLIENT_SECRET || '';
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
