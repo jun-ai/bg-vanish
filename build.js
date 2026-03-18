@@ -45,8 +45,7 @@ async function handleAuthCallback(request, env) {
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
     const payloadB64 = btoa(new TextEncoder().encode(sessionData));
     const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
-    const res = new Response(null, {status: 302, headers: new Headers({'Location': '/?auth=success'})});
-    setCookie(res, 'session', sessionToken, 604800);
+    const res = new Response(null, {status: 302, headers: {'Location': '/?auth=success', 'Set-Cookie': 'session=' + encodeURIComponent(sessionToken) + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'}});
     return res;
   } catch(e) { return json({error:e.message}, 500); }
 }
@@ -66,9 +65,7 @@ function handleAuthMe(request) {
 }
 
 function handleLogout(request) {
-  const res = new Response(JSON.stringify({success:true}), {headers:{'Content-Type':'application/json'}});
-  clearCookie(res, 'session');
-  return res;
+  return new Response(JSON.stringify({success:true}), {headers:{'Content-Type':'application/json', 'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'}});
 }
 
 async function handleRemoveBg(request, env) {
