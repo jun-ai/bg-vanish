@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BG Vanish — Remove Image Backgrounds Instantly</title>
+  <meta name="description" content="Remove image backgrounds in seconds. Free, fast, no signup required.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    body { font-family: 'Inter', sans-serif; }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .drop-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      transition: all 0.3s ease;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.15);
+      transform: scale(1.01);
+    }
+
+    .checker-bg {
+      background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+        linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+        linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(118, 75, 162, 0.5); }
+    }
+    .glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+    .fade-in { animation: fadeIn 0.5s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; }
+
+    .thumb { transition: all 0.2s; }
+    .thumb:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+
+  <!-- Header -->
+  <header class="py-6 px-4">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">✨</div>
+        <span class="text-xl font-bold">BG Vanish</span>
+      </div>
+      <div id="counter" class="text-sm text-white/70"></div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <main class="max-w-5xl mx-auto px-4 pb-20">
+    <section class="text-center py-10">
+      <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+        Remove Any Background<br>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">In Seconds</span>
+      </h1>
+      <p class="text-lg text-white/70 max-w-xl mx-auto">
+        Drop your image, get a clean cutout. No signup, no watermark. Powered by AI.
+      </p>
+    </section>
+
+    <!-- Upload Zone -->
+    <section id="uploadSection" class="mb-8">
+      <div id="dropZone" class="drop-zone rounded-2xl p-12 text-center cursor-pointer glass glow">
+        <div class="flex flex-col items-center gap-4">
+          <div class="text-6xl">🖼️</div>
+          <div>
+            <p class="text-lg font-semibold">Drop your image here</p>
+            <p class="text-sm text-white/60 mt-1">or click to browse · PNG, JPG, WebP up to 10MB · max 5 images</p>
+          </div>
+          <label class="px-6 py-2.5 bg-white/20 hover:bg-white/30 rounded-lg font-medium cursor-pointer transition">
+            Choose Files
+            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple class="hidden">
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Image Queue -->
+    <section id="queueSection" class="hidden mb-8 fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Queue</h2>
+        <button id="clearAllBtn" class="text-sm text-white/60 hover:text-white transition">Clear All</button>
+      </div>
+      <div id="queue" class="flex gap-3 overflow-x-auto pb-2"></div>
+    </section>
+
+    <!-- Results -->
+    <section id="resultsSection" class="hidden fade-in">
+      <div id="results" class="grid gap-6"></div>
+    </section>
+
+    <!-- Limit Modal -->
+    <div id="limitModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div class="glass rounded-2xl p-8 max-w-sm w-full text-center">
+        <div class="text-4xl mb-3">🚫</div>
+        <h3 class="text-xl font-bold mb-2">Daily Limit Reached</h3>
+        <p class="text-white/70 text-sm mb-6">
+          You've used all <span id="limitCount">5</span> free removals today.<br>Come back tomorrow or upgrade for unlimited access!
+        </p>
+        <button onclick="document.getElementById('limitModal').classList.add('hidden')"
+          class="px-6 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition">Got it</button>
+      </div>
+    </div>
+
+    <!-- Upgrade Banner -->
+    <section class="mt-12 text-center">
+      <div class="glass rounded-2xl p-6 inline-block">
+        <p class="text-sm text-white/60">Need more? <span class="text-yellow-200 font-semibold">API access</span> available for developers →</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-6 text-center text-xs text-white/40">
+    <p>BG Vanish · Powered by Remove.bg API · No data stored</p>
+  </footer>
+
+  <script>
+    const FREE_LIMIT = 5;
+    const state = {
+      queue: [],      // { id, file, originalUrl, resultUrl, status }
+      processing: 0,
+      maxConcurrent: 2,
+    };
+
+    // --- Daily limit ---
+    function getUsage() {
+      const today = new Date().toISOString().slice(0, 10);
+      const data = JSON.parse(localStorage.getItem('bgv_usage') || '{}');
+      if (data.date !== today) return { date: today, count: 0 };
+      return data;
+    }
+    function incrementUsage() {
+      const usage = getUsage();
+      usage.count++;
+      localStorage.setItem('bgv_usage', JSON.stringify(usage));
+      updateCounter();
+    }
+    function updateCounter() {
+      const usage = getUsage();
+      const remaining = FREE_LIMIT - usage.count;
+      document.getElementById('counter').textContent =
+        usage.count > 0 ? `🆓 ${remaining}/${FREE_LIMIT} today` : '';
+    }
+    updateCounter();
+
+    // --- Drag & Drop ---
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+    dropZone.addEventListener('click', (e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') fileInput.click(); });
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      state.queue.forEach(item => { URL.revokeObjectURL(item.originalUrl); URL.revokeObjectURL(item.resultUrl); });
+      state.queue = [];
+      render();
+    });
+
+    function handleFiles(files) {
+      const arr = Array.from(files);
+      const remaining = FREE_LIMIT - getUsage().count;
+      const allowed = arr.filter(f => f.type.startsWith('image/')).slice(0, Math.min(5 - state.queue.length, remaining));
+
+      if (allowed.length === 0) {
+        const usage = getUsage();
+        if (usage.count >= FREE_LIMIT) {
+          document.getElementById('limitCount').textContent = FREE_LIMIT;
+          document.getElementById('limitModal').classList.remove('hidden');
+        }
+        return;
+      }
+
+      allowed.forEach(file => {
+        const id = Math.random().toString(36).slice(2);
+        state.queue.push({
+          id,
+          file,
+          originalUrl: URL.createObjectURL(file),
+          resultUrl: null,
+          status: 'pending', // pending | processing | done | error
+          error: null,
+        });
+      });
+      render();
+      processQueue();
+    }
+
+    function render() {
+      // Queue thumbnails
+      const queueSection = document.getElementById('queueSection');
+      const queueEl = document.getElementById('queue');
+
+      if (state.queue.length === 0) {
+        queueSection.classList.add('hidden');
+        document.getElementById('resultsSection').classList.add('hidden');
+        return;
+      }
+
+      queueSection.classList.remove('hidden');
+      queueEl.innerHTML = state.queue.map(item => `
+        <div class="thumb flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden relative cursor-pointer" data-id="${item.id}">
+          <img src="${item.originalUrl}" class="w-full h-full object-cover">
+          ${item.status === 'processing' ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center"><div class="spinner" style="width:24px;height:24px;border-width:2px"></div></div>' : ''}
+          ${item.status === 'done' ? '<div class="absolute bottom-0 inset-x-0 bg-green-500 text-center text-xs py-0.5">✓</div>' : ''}
+          ${item.status === 'error' ? '<div class="absolute bottom-0 inset-x-0 bg-red-500 text-center text-xs py-0.5">✗</div>' : ''}
+        </div>
+      `).join('');
+
+      // Results
+      const resultsSection = document.getElementById('resultsSection');
+      const resultsEl = document.getElementById('results');
+      const doneItems = state.queue.filter(i => i.status === 'done' || i.status === 'error');
+
+      if (doneItems.length === 0) {
+        resultsSection.classList.add('hidden');
+        return;
+      }
+
+      resultsSection.classList.remove('hidden');
+      resultsEl.innerHTML = doneItems.map(item => renderResult(item)).join('');
+
+      // Attach event listeners
+      resultsEl.querySelectorAll('.download-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const item = state.queue.find(i => i.id === id);
+          if (item?.resultUrl) downloadResult(item);
+        });
+      });
+      resultsEl.querySelectorAll('.color-picker').forEach(input => {
+        input.addEventListener('input', (e) => {
+          const id = input.dataset.id;
+          const item = state.queue.find(i => i.id === id);
+          if (item?.resultUrl) applyBgColor(id, e.target.value);
+        });
+      });
+      resultsEl.querySelectorAll('.bg-preset').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const id = btn.dataset.id;
+          const color = btn.dataset.color;
+          if (color === 'transparent') {
+            const el = document.getElementById(`result-${id}`);
+            el.style.backgroundColor = '';
+          } else {
+            applyBgColor(id, color);
+          }
+        });
+      });
+    }
+
+    function renderResult(item) {
+      const bgStyle = item.resultUrl ? `background-image: url(${item.resultUrl}); background-size: contain; background-repeat: no-repeat; background-position: center;` : '';
+      return `
+        <div class="glass rounded-2xl p-6 fade-in">
+          ${item.status === 'error' ? `
+            <div class="text-center py-8">
+              <div class="text-3xl mb-2">😕</div>
+              <p class="text-red-300 text-sm">${item.error || 'Processing failed'}</p>
+            </div>
+          ` : `
+            <div class="flex flex-col md:flex-row gap-6">
+              <div class="flex-1 text-center">
+                <p class="text-xs text-white/50 mb-2 uppercase tracking-wide">Original</p>
+                <div class="rounded-xl overflow-hidden bg-black/20">
+                  <img src="${item.originalUrl}" class="w-full max-h-72 object-contain">
+                </div>
+              </div>
+              <div class="flex items-center text-2xl">→</div>
+              <div class="flex-1 text-center">
+                <p class="text-xs text-white/50 mb-2 uppercase tracking-wide">Result</p>
+                <div id="result-${item.id}" class="checker-bg rounded-xl overflow-hidden aspect-video flex items-center justify-center"
+                  style="${bgStyle}">
+                  ${!item.resultUrl ? '<div class="spinner"></div>' : ''}
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-white/50">BG:</span>
+                <button class="bg-preset w-7 h-7 rounded-full border-2 border-white/30 checker-bg" data-id="${item.id}" data-color="transparent" title="Transparent"></button>
+                <button class="bg-preset w-7 h-7 rounded-full border-2 border-white/30 bg-white" data-id="${item.id}" data-color="#ffffff" title="White"></button>
+                <button class="bg-preset w-7 h-7 rounded-full border-2 border-white/30 bg-black" data-id="${item.id}" data-color="#000000" title="Black"></button>
+                <button class="bg-preset w-7 h-7 rounded-full border-2 border-white/30 bg-red-500" data-id="${item.id}" data-color="#ef4444" title="Red"></button>
+                <button class="bg-preset w-7 h-7 rounded-full border-2 border-white/30 bg-blue-500" data-id="${item.id}" data-color="#3b82f6" title="Blue"></button>
+                <button class="bg-preset w-7 h-7 rounded-full border-2 border-white/30 bg-green-500" data-id="${item.id}" data-color="#22c55e" title="Green"></button>
+                <input type="color" class="color-picker" data-id="${item.id}" value="#8b5cf6" title="Custom color">
+              </div>
+              <button class="download-btn px-5 py-2 bg-white text-purple-700 rounded-lg font-semibold text-sm hover:bg-yellow-200 transition" data-id="${item.id}">
+                ⬇ Download PNG
+              </button>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function applyBgColor(id, color) {
+      const el = document.getElementById(`result-${id}`);
+      if (el) el.style.backgroundColor = color;
+    }
+
+    function downloadResult(item) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Get current bg color from the display element
+        const displayEl = document.getElementById(`result-${item.id}`);
+        const bgColor = displayEl?.style.backgroundColor || '';
+
+        if (bgColor && bgColor !== '') {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = item.file.name.replace(/\.[^.]+$/, '') + '-no-bg.png';
+          a.click();
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      };
+      img.src = item.resultUrl;
+    }
+
+    // --- Processing ---
+    async function processQueue() {
+      while (true) {
+        const pending = state.queue.filter(i => i.status === 'pending');
+        const processing = state.queue.filter(i => i.status === 'processing').length;
+
+        if (pending.length === 0) break;
+        if (processing >= state.maxConcurrent) {
+          await sleep(500);
+          continue;
+        }
+
+        const item = pending[0];
+        item.status = 'processing';
+        render();
+
+        try {
+          const formData = new FormData();
+          formData.append('image', item.file);
+          formData.append('size', 'auto');
+
+          const res = await fetch('/api/remove-bg', { method: 'POST', body: formData });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(err.error || `HTTP ${res.status}`);
+          }
+
+          const blob = await res.blob();
+          item.resultUrl = URL.createObjectURL(blob);
+          item.status = 'done';
+          incrementUsage();
+        } catch (err) {
+          item.status = 'error';
+          item.error = err.message;
+        }
+        render();
+      }
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // Keyboard: Ctrl+V paste
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files = [];
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          files.push(item.getAsFile());
+        }
+      }
+      if (files.length) handleFiles(files);
+    });
+  </script>
+</body>
+</html>

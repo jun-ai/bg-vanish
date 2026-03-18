@@ -1,0 +1,9 @@
+name = "bg-remover"
+main = "src/worker/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+MAX_FILE_SIZE = "10485760"
+
+# Set this secret before deploying:
+# wrangler secret put REMOVE_BG_API_KEY
