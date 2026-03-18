@@ -34,7 +34,7 @@ async function handleAuthCallback(request, env) {
       body: new URLSearchParams({code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code'}),
     });
     const td = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(td.error_description || 'Token exchange failed');
+    if (!tokenRes.ok) throw new Error('Token exchange failed: ' + JSON.stringify({error:td.error, status:tokenRes.status, desc:td.error_description}));
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
@@ -98,6 +98,10 @@ export default {
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
     if (url.pathname === '/api/auth/me') return handleAuthMe(request);
+    if (url.pathname === '/api/auth/debug') {
+      const ck = parseCookie(request.headers.get('cookie'));
+      return json({cookie: ck, allHeaders: Object.fromEntries(request.headers)});
+    }
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') return handleLogout(request);
     if (url.pathname === '/api/health') return Response.json({status:'ok'});
     return new Response('Not found', {status:404});
