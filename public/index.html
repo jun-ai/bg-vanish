@@ -4,13 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BG Vanish — Remove Image Backgrounds Instantly</title>
-  <meta name="description" content="Remove image backgrounds in seconds. Free, fast, no signup required.">
+  <meta name="description" content="Remove image backgrounds in seconds. Sign up and get 3 free credits. Powered by AI.">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     body { font-family: 'Inter', sans-serif; }
     .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
     .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+    .glass-dark { background: rgba(0,0,0,0.2); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
     .drop-zone { border: 2px dashed rgba(255,255,255,0.4); transition: all 0.3s ease; }
     .drop-zone:hover, .drop-zone.drag-over { border-color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.15); transform: scale(1.01); }
     .checker-bg {
@@ -40,111 +41,355 @@
     .google-btn:hover { opacity:0.9; }
     .google-btn svg { width:18px; height:18px; }
     .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.5); cursor:pointer; }
-    .user-menu { position:absolute; right:0; top:40px; background:rgba(30,20,60,0.95); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:8px; min-width:180px; z-index:50; }
+    .user-menu { position:absolute; right:0; top:40px; background:rgba(30,20,60,0.95); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:8px; min-width:200px; z-index:50; }
     .user-menu button { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; border:none; background:transparent; color:white; font-size:13px; cursor:pointer; border-radius:8px; text-align:left; }
     .user-menu button:hover { background:rgba(255,255,255,0.1); }
-    .login-banner { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:16px; text-align:center; margin-bottom:16px; }
-    .login-banner p { margin:8px 0 12px; font-size:14px; color:rgba(255,255,255,0.7); }
-    .logged-in-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:rgba(34,197,94,0.2); border:1px solid rgba(34,197,94,0.4); border-radius:20px; font-size:12px; color:#86efac; }
+    .pricing-card { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 32px; transition: all 0.3s; }
+    .pricing-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.3); }
+    .pricing-card.popular { border-color: rgba(250,204,21,0.6); background: rgba(250,204,21,0.08); }
+    .pricing-card.popular:hover { border-color: rgba(250,204,21,0.8); }
+    .tab-btn { padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .tab-btn.active { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
+    .tab-btn:not(.active) { color: rgba(255,255,255,0.5); }
+    .tab-btn:not(.active):hover { color: white; }
+    .faq-item { border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; }
+    .faq-q { padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; transition: background 0.2s; }
+    .faq-q:hover { background: rgba(255,255,255,0.05); }
+    .faq-a { padding: 0 20px; max-height: 0; overflow: hidden; transition: all 0.3s; color: rgba(255,255,255,0.7); font-size: 14px; }
+    .faq-item.open .faq-a { padding: 0 20px 16px; max-height: 200px; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    .faq-chevron { transition: transform 0.3s; }
+    .nav-link { color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; transition: color 0.2s; cursor: pointer; }
+    .nav-link:hover { color: white; }
+    .nav-link.active { color: white; }
+    .credit-badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:rgba(250,204,21,0.15); border:1px solid rgba(250,204,21,0.3); border-radius:20px; font-size:12px; color:#fde68a; }
+    .cta-btn { display:inline-block; padding: 12px 28px; border-radius: 12px; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; }
+    .cta-primary { background: white; color: #667eea; }
+    .cta-primary:hover { background: #fef3c7; transform: translateY(-1px); }
+    .cta-secondary { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
+    .cta-secondary:hover { background: rgba(255,255,255,0.25); }
+    .page { display: none; }
+    .page.active { display: block; }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-white">
 
-  <header class="py-6 px-4">
+  <!-- Header -->
+  <header class="py-4 px-4">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-2">
+      <a href="#" onclick="navigate('home');return false" class="flex items-center gap-2">
         <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">✨</div>
         <span class="text-xl font-bold">BG Vanish</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6">
+        <span class="nav-link" onclick="navigate('home')">Home</span>
+        <span class="nav-link" onclick="navigate('pricing')">Pricing</span>
+        <span class="nav-link" onclick="navigate('faq')">FAQ</span>
+      </nav>
+      <div class="flex items-center gap-3">
+        <div id="creditBadge" class="credit-badge hidden">🪙 <span id="creditCount">0</span></div>
+        <div id="userSection"></div>
+        <button class="md:hidden text-white/70 text-2xl" onclick="document.getElementById('mobileMenu').classList.toggle('hidden')">☰</button>
       </div>
-      <div id="userSection">
-        <!-- Will be populated by JS -->
-      </div>
-      <div id="counter" class="text-sm text-white/70"></div>
+    </div>
+    <div id="mobileMenu" class="hidden md:hidden mt-4 flex flex-col gap-2 text-center">
+      <span class="nav-link py-2" onclick="navigate('home');document.getElementById('mobileMenu').classList.add('hidden')">Home</span>
+      <span class="nav-link py-2" onclick="navigate('pricing');document.getElementById('mobileMenu').classList.add('hidden')">Pricing</span>
+      <span class="nav-link py-2" onclick="navigate('faq');document.getElementById('mobileMenu').classList.add('hidden')">FAQ</span>
     </div>
   </header>
 
-  <main class="max-w-5xl mx-auto px-4 pb-20">
-    <section class="text-center py-10">
-      <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
-        Remove Any Background<br>
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">In Seconds</span>
-      </h1>
-      <p class="text-lg text-white/70 max-w-xl mx-auto">
-        Drop your image, get a clean cutout. No signup, no watermark. Powered by AI.
-      </p>
-    </section>
+  <!-- HOME PAGE -->
+  <div id="page-home" class="page active">
+    <main class="max-w-5xl mx-auto px-4 pb-20">
+      <section class="text-center py-8">
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+          Remove Any Background<br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">In Seconds</span>
+        </h1>
+        <p class="text-lg text-white/70 max-w-xl mx-auto">
+          Drop your image, get a clean cutout. Sign up and get 3 free credits. Powered by AI.
+        </p>
+      </section>
 
-    <!-- Login Section -->
-    <div id="loginSection" class="mb-8">
-      <!-- Will be populated by JS -->
-    </div>
-
-    <section id="uploadSection" class="mb-8">
-      <div id="dropZone" class="drop-zone rounded-2xl p-12 text-center cursor-pointer glass glow">
-        <div class="flex flex-col items-center gap-4">
-          <div class="text-6xl">🖼️</div>
-          <div>
-            <p class="text-lg font-semibold">Drop your image here</p>
-            <p class="text-sm text-white/60 mt-1">or click to browse · PNG, JPG, WebP up to 10MB · max 5 images</p>
-          </div>
-          <label class="px-6 py-2.5 bg-white/20 hover:bg-white/30 rounded-lg font-medium cursor-pointer transition">
-            Choose Files
-            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple class="hidden">
-          </label>
+      <!-- Login Required Banner -->
+      <div id="loginRequired" class="mb-8">
+        <div class="glass rounded-2xl p-8 text-center">
+          <div class="text-4xl mb-3">🔐</div>
+          <h3 class="text-xl font-bold mb-2">Sign in to Get Started</h3>
+          <p class="text-white/60 text-sm mb-6">Create a free account to get 3 credits. No credit card required.</p>
+          <button class="google-btn text-base px-6 py-3" onclick="loginWithGoogle()">
+            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Sign in with Google — Free 3 Credits
+          </button>
         </div>
       </div>
-    </section>
 
-    <section id="queueSection" class="hidden mb-8 fade-in">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">Queue</h2>
-        <button id="clearAllBtn" class="text-sm text-white/60 hover:text-white transition">Clear All</button>
+      <!-- Upload Section (hidden until login) -->
+      <section id="uploadSection" class="mb-8 hidden">
+        <div id="dropZone" class="drop-zone rounded-2xl p-12 text-center cursor-pointer glass glow">
+          <div class="flex flex-col items-center gap-4">
+            <div class="text-6xl">🖼️</div>
+            <div>
+              <p class="text-lg font-semibold">Drop your image here</p>
+              <p class="text-sm text-white/60 mt-1">or click to browse · PNG, JPG, WebP up to 10MB</p>
+            </div>
+            <label class="px-6 py-2.5 bg-white/20 hover:bg-white/30 rounded-lg font-medium cursor-pointer transition">
+              Choose Files
+              <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple class="hidden">
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="queueSection" class="hidden mb-8 fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">Queue</h2>
+          <button id="clearAllBtn" class="text-sm text-white/60 hover:text-white transition">Clear All</button>
+        </div>
+        <div id="queue" class="flex gap-3 overflow-x-auto pb-2"></div>
+      </section>
+
+      <section id="resultsSection" class="hidden fade-in">
+        <div id="results" class="grid gap-6"></div>
+      </section>
+
+      <!-- Upgrade Modal -->
+      <div id="upgradeModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div class="glass rounded-2xl p-8 max-w-md w-full text-center fade-in">
+          <div class="text-4xl mb-3">⚡</div>
+          <h3 class="text-xl font-bold mb-2">Out of Credits</h3>
+          <p class="text-white/60 text-sm mb-6">You've used all your free credits. Get more to keep removing backgrounds!</p>
+          <div class="flex flex-col gap-3 mb-4">
+            <button onclick="navigate('pricing');closeUpgradeModal()" class="cta-btn cta-primary w-full">💎 View All Plans</button>
+            <button onclick="closeUpgradeModal()" class="cta-btn cta-secondary w-full">Maybe Later</button>
+          </div>
+        </div>
       </div>
-      <div id="queue" class="flex gap-3 overflow-x-auto pb-2"></div>
-    </section>
+    </main>
+  </div>
 
-    <section id="resultsSection" class="hidden fade-in">
-      <div id="results" class="grid gap-6"></div>
-    </section>
+  <!-- PRICING PAGE -->
+  <div id="page-pricing" class="page">
+    <main class="max-w-5xl mx-auto px-4 pb-20">
+      <section class="text-center py-10">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Simple, Transparent Pricing</h1>
+        <p class="text-lg text-white/70 max-w-lg mx-auto">Pay only for what you use. Credits never expire.</p>
+      </section>
 
-    <div id="limitModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div class="glass rounded-2xl p-8 max-w-sm w-full text-center">
-        <div class="text-4xl mb-3">🚫</div>
-        <h3 class="text-xl font-bold mb-2">Daily Limit Reached</h3>
-        <p class="text-white/70 text-sm mb-6">
-          You've used all <span id="limitCount">5</span> free removals today.<br>Come back tomorrow or upgrade for unlimited access!
-        </p>
-        <button onclick="document.getElementById('limitModal').classList.add('hidden')"
-          class="px-6 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition">Got it</button>
+      <!-- Tabs -->
+      <div class="flex justify-center gap-2 mb-10">
+        <button class="tab-btn active" onclick="switchPricingTab('credits', this)">💳 Credit Packs</button>
+        <button class="tab-btn" onclick="switchPricingTab('monthly', this)">🔄 Monthly Plans</button>
+      </div>
+
+      <!-- Credit Packs -->
+      <div id="pricing-credits" class="grid md:grid-cols-3 gap-6 mb-16">
+        <div class="pricing-card text-center">
+          <h3 class="text-lg font-bold mb-1">Starter</h3>
+          <p class="text-white/50 text-sm mb-4">Try it out</p>
+          <div class="text-4xl font-extrabold mb-1">$4.99</div>
+          <p class="text-white/50 text-sm mb-6">one-time</p>
+          <div class="text-3xl font-bold text-yellow-200 mb-4">40 <span class="text-base font-normal text-white/50">credits</span></div>
+          <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
+            <li>✓ $0.12 per image</li>
+            <li>✓ PNG output</li>
+            <li>✓ Never expire</li>
+            <li>✓ Up to 10MB per image</li>
+          </ul>
+          <button class="cta-btn cta-secondary w-full">Buy with PayPal</button>
+        </div>
+        <div class="pricing-card popular text-center relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full">⭐ MOST POPULAR</div>
+          <h3 class="text-lg font-bold mb-1">Popular</h3>
+          <p class="text-white/50 text-sm mb-4">Best value</p>
+          <div class="text-4xl font-extrabold mb-1">$9.99</div>
+          <p class="text-white/50 text-sm mb-6">one-time</p>
+          <div class="text-3xl font-bold text-yellow-200 mb-4">85 <span class="text-base font-normal text-white/50">credits</span></div>
+          <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
+            <li>✓ $0.12 per image</li>
+            <li>✓ PNG output</li>
+            <li>✓ Never expire</li>
+            <li>✓ Up to 10MB per image</li>
+            <li>✓ Priority processing</li>
+          </ul>
+          <button class="cta-btn cta-primary w-full">Buy with PayPal</button>
+        </div>
+        <div class="pricing-card text-center">
+          <h3 class="text-lg font-bold mb-1">Pro</h3>
+          <p class="text-white/50 text-sm mb-4">Power users</p>
+          <div class="text-4xl font-extrabold mb-1">$23.99</div>
+          <p class="text-white/50 text-sm mb-6">one-time</p>
+          <div class="text-3xl font-bold text-yellow-200 mb-4">200 <span class="text-base font-normal text-white/50">credits</span></div>
+          <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
+            <li>✓ $0.12 per image</li>
+            <li>✓ PNG output</li>
+            <li>✓ Never expire</li>
+            <li>✓ Up to 10MB per image</li>
+            <li>✓ Priority processing</li>
+            <li>✓ Batch upload (5 images)</li>
+          </ul>
+          <button class="cta-btn cta-secondary w-full">Buy with PayPal</button>
+        </div>
+      </div>
+
+      <!-- Monthly Plans -->
+      <div id="pricing-monthly" class="grid md:grid-cols-2 gap-6 mb-16 hidden">
+        <div class="pricing-card text-center">
+          <h3 class="text-lg font-bold mb-1">Basic</h3>
+          <p class="text-white/50 text-sm mb-4">For regular use</p>
+          <div class="text-4xl font-extrabold mb-1">$7.99<span class="text-lg font-normal text-white/50">/mo</span></div>
+          <p class="text-white/50 text-sm mb-6">billed monthly</p>
+          <div class="text-3xl font-bold text-yellow-200 mb-4">60 <span class="text-base font-normal text-white/50">credits/month</span></div>
+          <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
+            <li>✓ 60 credits per month</li>
+            <li>✓ Resets monthly</li>
+            <li>✓ PNG output</li>
+            <li>✓ Up to 10MB per image</li>
+            <li>✓ Cancel anytime</li>
+          </ul>
+          <button class="cta-btn cta-secondary w-full">Subscribe via PayPal</button>
+        </div>
+        <div class="pricing-card popular text-center relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full">⭐ BEST VALUE</div>
+          <h3 class="text-lg font-bold mb-1">Pro</h3>
+          <p class="text-white/50 text-sm mb-4">For professionals</p>
+          <div class="text-4xl font-extrabold mb-1">$17.99<span class="text-lg font-normal text-white/50">/mo</span></div>
+          <p class="text-white/50 text-sm mb-6">billed monthly</p>
+          <div class="text-3xl font-bold text-yellow-200 mb-4">150 <span class="text-base font-normal text-white/50">credits/month</span></div>
+          <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
+            <li>✓ 150 credits per month</li>
+            <li>✓ Resets monthly</li>
+            <li>✓ PNG output</li>
+            <li>✓ Up to 10MB per image</li>
+            <li>✓ Priority processing</li>
+            <li>✓ Batch upload (5 images)</li>
+            <li>✓ Cancel anytime</li>
+          </ul>
+          <button class="cta-btn cta-primary w-full">Subscribe via PayPal</button>
+        </div>
+      </div>
+
+      <!-- FAQ on pricing page -->
+      <section class="mb-16">
+        <h2 class="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+        <div class="max-w-2xl mx-auto space-y-3">
+          <div class="faq-item glass-dark">
+            <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does BG Vanish work?<span class="faq-chevron text-white/40">▼</span></div>
+            <div class="faq-a">Upload any image with a background, and our AI will automatically detect and remove it in seconds. You get a transparent PNG ready to download. No design skills needed.</div>
+          </div>
+          <div class="faq-item glass-dark">
+            <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What image formats are supported?<span class="faq-chevron text-white/40">▼</span></div>
+            <div class="faq-a">We support PNG, JPG, and WebP formats. Maximum file size is 10MB per image.</div>
+          </div>
+          <div class="faq-item glass-dark">
+            <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Do credits expire?<span class="faq-chevron text-white/40">▼</span></div>
+            <div class="faq-a">Credit pack credits never expire — use them anytime. Monthly subscription credits reset at the start of each billing cycle.</div>
+          </div>
+          <div class="faq-item glass-dark">
+            <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I cancel my subscription anytime?<span class="faq-chevron text-white/40">▼</span></div>
+            <div class="faq-a">Yes, you can cancel anytime from your dashboard. Your current billing period will remain active until it expires.</div>
+          </div>
+          <div class="faq-item glass-dark">
+            <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What payment methods do you accept?<span class="faq-chevron text-white/40">▼</span></div>
+            <div class="faq-a">We accept PayPal. More payment methods coming soon.</div>
+          </div>
+          <div class="faq-item glass-dark">
+            <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is my data safe?<span class="faq-chevron text-white/40">▼</span></div>
+            <div class="faq-a">Absolutely. Your images are processed and immediately deleted. We never store, share, or use your uploaded photos for any purpose.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="text-center">
+        <div class="glass rounded-2xl p-10 max-w-lg mx-auto">
+          <h3 class="text-2xl font-bold mb-2">Ready to Try?</h3>
+          <p class="text-white/60 mb-6">Sign up for free and get 3 credits. No credit card required.</p>
+          <button class="cta-btn cta-primary text-lg" onclick="loginWithGoogle()">🚀 Try for Free</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- FAQ PAGE -->
+  <div id="page-faq" class="page">
+    <main class="max-w-2xl mx-auto px-4 pb-20">
+      <section class="text-center py-10">
+        <h1 class="text-4xl font-extrabold mb-4">FAQ</h1>
+        <p class="text-white/60">Everything you need to know about BG Vanish</p>
+      </section>
+      <div class="space-y-3">
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is BG Vanish?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">BG Vanish is an AI-powered tool that removes backgrounds from images instantly. Upload any photo and get a clean transparent cutout in seconds.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How many free credits do I get?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">New users get 3 free credits upon sign-up. No credit card required. You can purchase more credits or subscribe to a monthly plan anytime.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How accurate is the background removal?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Our AI handles most images with high accuracy, including complex edges like hair, fur, and transparent objects. Results are usually excellent for product photos, portraits, and logos.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I use the images commercially?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Yes! You own the rights to your images. The background-removed output is yours to use for any purpose, commercial or personal.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What's the maximum image size?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Maximum file size is 10MB. Supported formats: PNG, JPG, WebP.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How do I contact support?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Email us at support@imagebackgroundremover.pro and we'll get back to you within 24 hours.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="py-6 text-center text-xs text-white/40 border-t border-white/10">
+    <div class="max-w-5xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p>BG Vanish · Powered by AI · No data stored</p>
+      <div class="flex gap-4">
+        <span class="nav-link text-xs" onclick="navigate('pricing')">Pricing</span>
+        <span class="nav-link text-xs" onclick="navigate('faq')">FAQ</span>
       </div>
     </div>
-
-    <section class="mt-12 text-center">
-      <div class="glass rounded-2xl p-6 inline-block">
-        <p class="text-sm text-white/60">Need more? <span class="text-yellow-200 font-semibold">API access</span> available for developers →</p>
-      </div>
-    </section>
-  </main>
-
-  <footer class="py-6 text-center text-xs text-white/40">
-    <p>BG Vanish · Powered by Remove.bg API · No data stored</p>
   </footer>
 
   <script>
-    const FREE_LIMIT = 5;
-    const REQUEST_TIMEOUT = 30000; // 30 seconds
-    const state = { queue: [], maxConcurrent: 2 };
+    const REQUEST_TIMEOUT = 30000;
+    const state = { queue: [], maxConcurrent: 2, credits: 0 };
+    let currentUser = null;
 
     // --- Google OAuth ---
     const GOOGLE_CLIENT_ID = '480367987155-k6bnrnt7trj6pekeo36fcipnlr0o1c18.apps.googleusercontent.com';
-    const LOGGED_IN_LIMIT = 20; // logged-in users get more
-    let currentUser = null;
 
+    // --- SPA Navigation ---
+    function navigate(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + page)?.classList.add('active');
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      window.scrollTo(0, 0);
+    }
+
+    // --- Pricing Tab ---
+    function switchPricingTab(tab, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pricing-credits').classList.toggle('hidden', tab !== 'credits');
+      document.getElementById('pricing-monthly').classList.toggle('hidden', tab !== 'monthly');
+    }
+
+    // --- Auth ---
     async function checkAuth() {
       try {
         const res = await fetch('/api/auth/me');
         if (res.ok) {
           currentUser = await res.json();
+          state.credits = currentUser.credits || 0;
           onLogin();
         } else {
           onLogout();
@@ -153,10 +398,9 @@
     }
 
     function onLogin() {
-      const sec = document.getElementById('userSection');
-      sec.style.position = 'relative';
-      sec.innerHTML = `
-        <div class="flex items-center gap-3">
+      document.getElementById('userSection').innerHTML = `
+        <div class="flex items-center gap-2" style="position:relative">
+          <div class="credit-badge">🪙 <span id="creditCount">${state.credits}</span></div>
           <div id="userAvatar" class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">
             <img src="${currentUser.picture}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.style.display='none';this.parentElement.textContent='${(currentUser.name||'U')[0]}'">
           </div>
@@ -164,32 +408,32 @@
             <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:4px">
               <div style="font-size:14px;font-weight:600">${currentUser.name}</div>
               <div style="font-size:11px;color:rgba(255,255,255,0.5)">${currentUser.email}</div>
+              <div style="font-size:11px;color:#fde68a;margin-top:2px">🪙 ${state.credits} credits remaining</div>
             </div>
+            <button onclick="navigate('pricing');document.getElementById('userMenu').classList.add('hidden')">💎 Get More Credits</button>
             <button onclick="logout()">🚪 Sign out</button>
           </div>
         </div>`;
-      // Update login section
-      const loginSec = document.getElementById('loginSection');
-      loginSec.innerHTML = `<div class="logged-in-badge">✓ Signed in as ${currentUser.name} · ${LOGGED_IN_LIMIT} images/day</div>`;
-      // Update free limit for logged-in users
-      state.freeLimit = LOGGED_IN_LIMIT;
-      updateCounter();
+      document.getElementById('creditBadge').classList.add('hidden');
+      document.getElementById('loginRequired').classList.add('hidden');
+      document.getElementById('uploadSection').classList.remove('hidden');
+      updateCreditDisplay();
     }
 
     function onLogout() {
-      const sec = document.getElementById('userSection');
-      sec.innerHTML = `
+      document.getElementById('userSection').innerHTML = `
         <button class="google-btn" onclick="loginWithGoogle()">
           <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Sign in with Google
+          Sign In
         </button>`;
-      const loginSec = document.getElementById('loginSection');
-      loginSec.innerHTML = `
-        <div class="login-banner">
-          <p>🎁 Sign in to get <strong>20 free images/day</strong> instead of 5</p>
-        </div>`;
-      state.freeLimit = FREE_LIMIT;
-      currentUser = null;
+      document.getElementById('creditBadge').classList.add('hidden');
+      document.getElementById('loginRequired').classList.remove('hidden');
+      document.getElementById('uploadSection').classList.add('hidden');
+    }
+
+    function updateCreditDisplay() {
+      const el = document.getElementById('creditCount');
+      if (el) el.textContent = state.credits;
     }
 
     function loginWithGoogle() {
@@ -203,79 +447,49 @@
       await fetch('/api/auth/logout', { method: 'POST' });
       document.getElementById('userMenu')?.classList.add('hidden');
       onLogout();
-      updateCounter();
     }
 
-    // Update getUsage to use dynamic limit
-    function getFreeLimit() { return state.freeLimit || FREE_LIMIT; }
-
-    // --- Daily limit ---
-    function getUsage() {
-      const today = new Date().toISOString().slice(0, 10);
-      const key = currentUser ? 'bgv_usage_auth' : 'bgv_usage';
-      const data = JSON.parse(localStorage.getItem(key) || '{}');
-      return data.date === today ? data : { date: today, count: 0 };
-    }
-    function incrementUsage() {
-      const u = getUsage(); u.count++;
-      const key = currentUser ? 'bgv_usage_auth' : 'bgv_usage';
-      localStorage.setItem(key, JSON.stringify(u));
-      updateCounter();
-    }
-    function updateCounter() {
-      const u = getUsage(), limit = getFreeLimit(), r = limit - u.count;
-      document.getElementById('counter').textContent = u.count > 0 ? `🆓 ${Math.max(0,r)}/${limit} today` : '';
+    function closeUpgradeModal() {
+      document.getElementById('upgradeModal').classList.add('hidden');
     }
 
-    // Init auth on page load
-    state.freeLimit = FREE_LIMIT;
-    updateCounter();
-
-    // Check if we just came back from OAuth callback
-    if (window.location.search.includes('auth=success')) {
-      window.history.replaceState({}, '', '/');
+    function showUpgradeModal() {
+      document.getElementById('upgradeModal').classList.remove('hidden');
     }
-    checkAuth();
 
     // --- Drag & Drop ---
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
 
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', (e) => {
+    dropZone?.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone?.addEventListener('drop', (e) => {
       e.preventDefault(); dropZone.classList.remove('drag-over');
       handleFiles(e.dataTransfer.files);
     });
-    dropZone.addEventListener('click', (e) => {
+    dropZone?.addEventListener('click', (e) => {
       if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') fileInput.click();
     });
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    fileInput?.addEventListener('change', (e) => handleFiles(e.target.files));
 
-    document.getElementById('clearAllBtn').addEventListener('click', () => {
+    document.getElementById('clearAllBtn')?.addEventListener('click', () => {
       state.queue.forEach(i => { URL.revokeObjectURL(i.originalUrl); if (i.resultUrl) URL.revokeObjectURL(i.resultUrl); });
       state.queue = [];
       render();
     });
 
     function handleFiles(files) {
-      const arr = Array.from(files);
-      const rem = FREE_LIMIT - getUsage().count;
-      const ok = arr.filter(f => f.type.startsWith('image/')).slice(0, Math.min(5 - state.queue.length, rem));
-      if (!ok.length) {
-        if (getUsage().count >= FREE_LIMIT) {
-          document.getElementById('limitCount').textContent = FREE_LIMIT;
-          document.getElementById('limitModal').classList.remove('hidden');
-        }
-        return;
-      }
+      const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
+      if (!arr.length) return;
+      if (state.credits <= 0) { showUpgradeModal(); return; }
+      const ok = arr.slice(0, Math.min(5 - state.queue.length, state.credits));
       ok.forEach(file => {
         state.queue.push({
           id: Math.random().toString(36).slice(2),
           file,
           originalUrl: URL.createObjectURL(file),
           resultUrl: null,
-          status: 'pending', // pending | processing | done | error
+          status: 'pending',
           error: null,
         });
       });
@@ -289,9 +503,7 @@
       const qe = document.getElementById('queue');
       const rs = document.getElementById('resultsSection');
       const re = document.getElementById('results');
-
       if (!state.queue.length) { qs.classList.add('hidden'); rs.classList.add('hidden'); return; }
-
       qs.classList.remove('hidden');
       qe.innerHTML = state.queue.map(item => `
         <div class="thumb flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden relative" data-id="${item.id}">
@@ -301,29 +513,20 @@
           ${item.status === 'error' ? '<div class="absolute bottom-0 inset-x-0 bg-red-500 text-center text-xs py-0.5">✗</div>' : ''}
         </div>
       `).join('');
-
       const done = state.queue.filter(i => i.status === 'done' || i.status === 'error');
       if (!done.length) { rs.classList.add('hidden'); return; }
-
       rs.classList.remove('hidden');
       re.innerHTML = done.map(renderResult).join('');
-
-      // Event listeners
       re.querySelectorAll('.download-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          const id = btn.dataset.id;
-          const transparent = btn.dataset.transparent === 'true';
-          const item = state.queue.find(i => i.id === id);
-          if (item?.resultUrl) downloadResult(item, transparent);
+          const item = state.queue.find(i => i.id === btn.dataset.id);
+          if (item?.resultUrl) downloadResult(item, btn.dataset.transparent === 'true');
         });
       });
       re.querySelectorAll('.color-picker').forEach(input => {
         input.addEventListener('input', (e) => {
           const item = state.queue.find(i => i.id === input.dataset.id);
-          if (item?.resultUrl) {
-            const el = document.getElementById('result-' + item.id);
-            if (el) el.style.backgroundColor = e.target.value;
-          }
+          if (item?.resultUrl) { const el = document.getElementById('result-' + item.id); if (el) el.style.backgroundColor = e.target.value; }
         });
       });
       re.querySelectorAll('.bg-preset').forEach(btn => {
@@ -332,14 +535,11 @@
           if (el) el.style.backgroundColor = btn.dataset.color === 'transparent' ? '' : btn.dataset.color;
         });
       });
-      // Zoom
       re.querySelectorAll('.zoom-container').forEach(container => {
         container.addEventListener('click', (e) => {
           const rect = container.getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-          const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-          container.style.setProperty('--zx', x + '%');
-          container.style.setProperty('--zy', y + '%');
+          container.style.setProperty('--zx', ((e.clientX - rect.left) / rect.width * 100).toFixed(1) + '%');
+          container.style.setProperty('--zy', ((e.clientY - rect.top) / rect.height * 100).toFixed(1) + '%');
           container.classList.toggle('zoomed');
         });
       });
@@ -347,34 +547,19 @@
 
     function renderResult(item) {
       if (item.status === 'error') {
-        return `
-          <div class="glass rounded-2xl p-6 fade-in text-center py-8">
-            <div class="text-3xl mb-2">😕</div>
-            <p class="text-red-300 text-sm">${item.error || 'Processing failed'}</p>
-          </div>`;
+        return `<div class="glass rounded-2xl p-6 fade-in text-center py-8"><div class="text-3xl mb-2">😕</div><p class="text-red-300 text-sm">${item.error || 'Processing failed'}</p></div>`;
       }
-
       return `
         <div class="glass rounded-2xl p-6 fade-in">
           <div class="flex flex-col md:flex-row gap-6">
             <div class="flex-1 text-center">
               <p class="text-xs text-white/50 mb-2 uppercase tracking-wide">Original</p>
-              <div class="zoom-container rounded-xl overflow-hidden bg-black/20" style="height:240px">
-                <div class="zoom-overlay w-full h-full flex items-center justify-center">
-                  <img src="${item.originalUrl}" class="max-h-full object-contain" style="transition:transform 0.2s">
-                </div>
-                <span class="zoom-hint">Click to zoom</span>
-              </div>
+              <div class="zoom-container rounded-xl overflow-hidden bg-black/20" style="height:240px"><div class="zoom-overlay w-full h-full flex items-center justify-center"><img src="${item.originalUrl}" class="max-h-full object-contain" style="transition:transform 0.2s"></div><span class="zoom-hint">Click to zoom</span></div>
             </div>
             <div class="flex items-center text-2xl">→</div>
             <div class="flex-1 text-center">
               <p class="text-xs text-white/50 mb-2 uppercase tracking-wide">Result</p>
-              <div id="result-${item.id}" class="zoom-container checker-bg rounded-xl overflow-hidden" style="height:240px">
-                <div class="zoom-overlay w-full h-full flex items-center justify-center">
-                  <img src="${item.resultUrl}" class="max-h-full object-contain" style="transition:transform 0.2s">
-                </div>
-                <span class="zoom-hint">Click to zoom</span>
-              </div>
+              <div id="result-${item.id}" class="zoom-container checker-bg rounded-xl overflow-hidden" style="height:240px"><div class="zoom-overlay w-full h-full flex items-center justify-center"><img src="${item.resultUrl}" class="max-h-full object-contain" style="transition:transform 0.2s"></div><span class="zoom-hint">Click to zoom</span></div>
             </div>
           </div>
           <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -401,20 +586,18 @@
       const ctx = canvas.getContext('2d');
       const img = new Image();
       img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width; canvas.height = img.height;
         if (!transparent) {
           const el = document.getElementById('result-' + item.id);
           const bg = el?.style.backgroundColor || '';
           if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, canvas.width, canvas.height); }
         }
         ctx.drawImage(img, 0, 0);
-        const suffix = transparent ? '-no-bg' : '-bg';
         canvas.toBlob(blob => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = item.file.name.replace(/\.[^.]+$/, '') + suffix + '.png';
+          a.download = item.file.name.replace(/\.[^.]+$/, '') + (transparent ? '-no-bg' : '-bg') + '.png';
           a.click();
           URL.revokeObjectURL(url);
         }, 'image/png');
@@ -422,44 +605,45 @@
       img.src = item.resultUrl;
     }
 
-    // --- Processing with timeout ---
+    // --- Processing ---
     async function processQueue() {
       while (true) {
         const pending = state.queue.filter(i => i.status === 'pending');
         const processing = state.queue.filter(i => i.status === 'processing').length;
         if (!pending.length) break;
         if (processing >= state.maxConcurrent) { await new Promise(r => setTimeout(r, 500)); continue; }
-
         const item = pending[0];
         item.status = 'processing';
         render();
-
         try {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
           const fd = new FormData();
           fd.append('image', item.file);
           fd.append('size', 'auto');
-
           const res = await fetch('/api/remove-bg', { method: 'POST', body: fd, signal: controller.signal });
           clearTimeout(timer);
-
           if (!res.ok) {
             const err = await res.json().catch(() => ({ error: 'Unknown error' }));
             throw new Error(err.error || 'HTTP ' + res.status);
           }
-
           const blob = await res.blob();
           item.resultUrl = URL.createObjectURL(blob);
           item.status = 'done';
-          incrementUsage();
+          state.credits--;
+          updateCreditDisplay();
+          if (state.credits <= 0) { showUpgradeModal(); }
         } catch (err) {
           item.status = 'error';
           if (err.name === 'AbortError') {
             item.error = 'Processing timed out (30s). Please try a smaller image.';
           } else {
             item.error = err.message;
+            if (err.message.includes('No credits')) {
+              state.credits = 0;
+              updateCreditDisplay();
+              showUpgradeModal();
+            }
           }
         }
         render();
@@ -468,14 +652,19 @@
 
     // Paste
     document.addEventListener('paste', (e) => {
+      if (!currentUser) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       const files = [];
-      for (const i of items) {
-        if (i.kind === 'file' && i.type.startsWith('image/')) files.push(i.getAsFile());
-      }
+      for (const i of items) { if (i.kind === 'file' && i.type.startsWith('image/')) files.push(i.getAsFile()); }
       if (files.length) handleFiles(files);
     });
+
+    // Init
+    if (window.location.search.includes('auth=success')) {
+      window.history.replaceState({}, '', '/');
+    }
+    checkAuth();
   </script>
 </body>
 </html>

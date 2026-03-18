@@ -13,16 +13,39 @@ function parseCookie(h) {
   h.split(';').forEach(p => { const [k,v] = p.trim().split('='); if(k) c[k]=v; });
   return c;
 }
-function setCookie(res, name, val, maxAge=604800) {
-  res.headers.append('Set-Cookie', name + '=' + val + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + maxAge);
-}
-function clearCookie(res, name) {
-  res.headers.append('Set-Cookie', name + '=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
-}
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
   return Math.abs(h).toString(36).padStart(8, '0');
+}
+function b64Encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  return btoa(String.fromCharCode(...bytes));
+}
+function b64Decode(b64) {
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
+}
+function json(data, status) { return new Response(JSON.stringify(data), {status, headers:{'Content-Type':'application/json'}}); }
+
+async function getSessionUser(request, env) {
+  const session = parseCookie(request.headers.get('cookie'));
+  const token = session.session;
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    const payload = b64Decode(parts[0]);
+    if (payload.exp < Date.now()) return null;
+    if (parts[1] !== simpleHash(COOKIE_SECRET + JSON.stringify(payload))) return null;
+    // Get credits from D1
+    let credits = 0;
+    if (env.DB) {
+      try {
+        const row = await env.DB.prepare('SELECT credits, plan FROM users WHERE google_id = ?').bind(payload.sub).first();
+        credits = row ? row.credits : 0;
+      } catch(e) { credits = 0; }
+    }
+    return { ...payload, credits };
+  } catch(e) { return null; }
 }
 
 async function handleAuthCallback(request, env) {
@@ -39,30 +62,26 @@ async function handleAuthCallback(request, env) {
       body: new URLSearchParams({code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code'}),
     });
     const td = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error('Token exchange failed: ' + JSON.stringify({error:td.error, status:tokenRes.status, desc:td.error_description}));
+    if (!tokenRes.ok) throw new Error('Token exchange failed: ' + JSON.stringify({error:td.error, status:tokenRes.status}));
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
-    const bytes = new TextEncoder().encode(sessionData);
-    const payloadB64 = btoa(String.fromCharCode(...bytes));
+    const payloadB64 = b64Encode(sessionData);
     const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
-    const res = new Response(null, {status: 302, headers: {'Location': '/?auth=success', 'Set-Cookie': 'session=' + sessionToken + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'}});
-    return res;
+    // Create user in D1 if not exists (give 3 free credits)
+    if (env.DB) {
+      try {
+        await env.DB.prepare(\`INSERT INTO users (google_id, email, name, picture, credits) VALUES (?, ?, ?, ?, 3) ON CONFLICT(google_id) DO NOTHING\`).bind(ud.id, ud.email, ud.name, ud.picture).run();
+      } catch(e) { console.error('D1 insert error:', e); }
+    }
+    return new Response(null, {status: 302, headers: {'Location': '/?auth=success', 'Set-Cookie': 'session=' + sessionToken + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'}});
   } catch(e) { return json({error:e.message}, 500); }
 }
 
-function handleAuthMe(request) {
-  const session = parseCookie(request.headers.get('cookie'));
-  const token = session.session;
-  if (!token) return json({error:'Not authenticated'}, 401);
-  try {
-    const parts = token.split('.');
-    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[0]), c => c.charCodeAt(0))));
-    if (payload.exp < Date.now()) return json({error:'Session expired'}, 401);
-    const expectedSig = simpleHash(COOKIE_SECRET + JSON.stringify(payload));
-    if (parts[1] !== expectedSig) return json({error:'Invalid session'}, 401);
-    return json({id:payload.sub, name:payload.name, email:payload.email, picture:payload.picture});
-  } catch(e) { return json({error:'Invalid session'}, 401); }
+async function handleAuthMe(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({error:'Not authenticated'}, 401);
+  return json({id:user.sub, name:user.name, email:user.email, picture:user.picture, credits:user.credits});
 }
 
 function handleLogout(request) {
@@ -70,6 +89,11 @@ function handleLogout(request) {
 }
 
 async function handleRemoveBg(request, env) {
+  // Check auth
+  const user = await getSessionUser(request, env);
+  if (!user) return json({error:'Please sign in to use this feature'}, 401);
+  // Check credits
+  if (user.credits <= 0) return json({error:'No credits remaining. Please purchase more credits.'}, 402);
   const apiKey = env.REMOVE_BG_API_KEY;
   if (!apiKey) return json({error:'API key not configured'}, 500);
   const maxSize = parseInt(env.MAX_FILE_SIZE || '10485760', 10);
@@ -90,11 +114,20 @@ async function handleRemoveBg(request, env) {
       if (res.status === 402) return json({error:'API credits exhausted.'}, 503);
       return json({error:msg}, res.status);
     }
+    // Deduct credit
+    if (env.DB) {
+      try {
+        await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ?').bind(user.sub).run();
+      } catch(e) { console.error('D1 credit deduct error:', e); }
+    }
     return new Response(await res.arrayBuffer(), {headers:{'Content-Type':'image/png','Cache-Control':'no-store'}});
   } catch(e) { return json({error:e.message||'Server error'}, 500); }
 }
 
-function json(data, status) { return new Response(JSON.stringify(data), {status, headers:{'Content-Type':'application/json'}}); }
+function handleAuthDebug(request) {
+  const ck = parseCookie(request.headers.get('cookie'));
+  return json({cookie: ck});
+}
 
 export default {
   async fetch(request, env) {
@@ -103,14 +136,12 @@ export default {
     if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
-    if (url.pathname === '/api/auth/me') return handleAuthMe(request);
-    if (url.pathname === '/api/auth/debug') {
-      const ck = parseCookie(request.headers.get('cookie'));
-      return json({cookie: ck, allHeaders: Object.fromEntries(request.headers)});
-    }
+    if (url.pathname === '/api/auth/me') return handleAuthMe(request, env);
+    if (url.pathname === '/api/auth/debug') return handleAuthDebug(request);
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') return handleLogout(request);
     if (url.pathname === '/api/health') return Response.json({status:'ok'});
-    return new Response('Not found', {status:404});
+    // SPA fallback - serve HTML for all other routes
+    return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
   }
 };
 `;

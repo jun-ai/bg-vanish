@@ -3,8 +3,10 @@ main = "dist/worker.js"
 compatibility_date = "2024-01-01"
 no_bundle = true
 
+[[d1_databases]]
+binding = "DB"
+database_name = "bg-vanish-db"
+database_id = "(todo)"
+
 [vars]
 MAX_FILE_SIZE = "10485760"
-
-# Set this secret before deploying:
-# wrangler secret put REMOVE_BG_API_KEY
