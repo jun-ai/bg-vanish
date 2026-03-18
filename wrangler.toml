@@ -6,7 +6,7 @@ no_bundle = true
 [[d1_databases]]
 binding = "DB"
 database_name = "bg-vanish-db"
-database_id = "(todo)"
+database_id = "c4926cbc-f3e7-46fc-ba27-c68fdcc63350"
 
 [vars]
 MAX_FILE_SIZE = "10485760"
