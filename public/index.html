@@ -400,7 +400,7 @@
     function onLogin() {
       document.getElementById('userSection').innerHTML = `
         <div class="flex items-center gap-2" style="position:relative">
-          <div class="credit-badge">🪙 <span id="creditCount">${state.credits}</span></div>
+          <div class="credit-badge">🪙 <span id="headerCredits">${state.credits}</span></div>
           <div id="userAvatar" class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">
             <img src="${currentUser.picture}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.style.display='none';this.parentElement.textContent='${(currentUser.name||'U')[0]}'">
           </div>
@@ -408,7 +408,7 @@
             <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:4px">
               <div style="font-size:14px;font-weight:600">${currentUser.name}</div>
               <div style="font-size:11px;color:rgba(255,255,255,0.5)">${currentUser.email}</div>
-              <div style="font-size:11px;color:#fde68a;margin-top:2px">🪙 ${state.credits} credits remaining</div>
+              <div id="menuCredits" style="font-size:11px;color:#fde68a;margin-top:2px">🪙 ${state.credits} credits remaining</div>
             </div>
             <button onclick="navigate('pricing');document.getElementById('userMenu').classList.add('hidden')">💎 Get More Credits</button>
             <button onclick="logout()">🚪 Sign out</button>
@@ -432,8 +432,10 @@
     }
 
     function updateCreditDisplay() {
-      const el = document.getElementById('creditCount');
-      if (el) el.textContent = state.credits;
+      const hc = document.getElementById('headerCredits');
+      const mc = document.getElementById('menuCredits');
+      if (hc) hc.textContent = state.credits;
+      if (mc) mc.textContent = '🪙 ' + state.credits + ' credits remaining';
     }
 
     function loginWithGoogle() {
