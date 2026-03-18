@@ -38,7 +38,8 @@ async function handleAuthCallback(request, env) {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
-    const payloadB64 = btoa(new TextEncoder().encode(sessionData));
+    const bytes = new TextEncoder().encode(sessionData);
+    const payloadB64 = btoa(String.fromCharCode(...bytes));
     const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
     const res = new Response(null, {status: 302, headers: {'Location': '/?auth=success', 'Set-Cookie': 'session=' + sessionToken + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800'}});
     return res;
