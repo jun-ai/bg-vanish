@@ -36,6 +36,16 @@
     .zoom-hint { position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.6); color:#fff; font-size:11px; padding:2px 8px; border-radius:4px; opacity:0; transition:opacity 0.2s; pointer-events:none; }
     .zoom-container:hover .zoom-hint { opacity:1; }
     .timeout-msg { color: #fca5a5; font-size: 12px; margin-top: 4px; }
+    .google-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 16px; background:#fff; color:#333; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; border:none; transition:opacity 0.2s; }
+    .google-btn:hover { opacity:0.9; }
+    .google-btn svg { width:18px; height:18px; }
+    .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.5); cursor:pointer; }
+    .user-menu { position:absolute; right:0; top:40px; background:rgba(30,20,60,0.95); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); border-radius:12px; padding:8px; min-width:180px; z-index:50; }
+    .user-menu button { display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; border:none; background:transparent; color:white; font-size:13px; cursor:pointer; border-radius:8px; text-align:left; }
+    .user-menu button:hover { background:rgba(255,255,255,0.1); }
+    .login-banner { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:12px; padding:16px; text-align:center; margin-bottom:16px; }
+    .login-banner p { margin:8px 0 12px; font-size:14px; color:rgba(255,255,255,0.7); }
+    .logged-in-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:rgba(34,197,94,0.2); border:1px solid rgba(34,197,94,0.4); border-radius:20px; font-size:12px; color:#86efac; }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-white">
@@ -45,6 +55,9 @@
       <div class="flex items-center gap-2">
         <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">✨</div>
         <span class="text-xl font-bold">BG Vanish</span>
+      </div>
+      <div id="userSection">
+        <!-- Will be populated by JS -->
       </div>
       <div id="counter" class="text-sm text-white/70"></div>
     </div>
@@ -60,6 +73,11 @@
         Drop your image, get a clean cutout. No signup, no watermark. Powered by AI.
       </p>
     </section>
+
+    <!-- Login Section -->
+    <div id="loginSection" class="mb-8">
+      <!-- Will be populated by JS -->
+    </div>
 
     <section id="uploadSection" class="mb-8">
       <div id="dropZone" class="drop-zone rounded-2xl p-12 text-center cursor-pointer glass glow">
@@ -117,22 +135,107 @@
     const REQUEST_TIMEOUT = 30000; // 30 seconds
     const state = { queue: [], maxConcurrent: 2 };
 
+    // --- Google OAuth ---
+    const GOOGLE_CLIENT_ID = '480367987155-qsuif9totrl50ci5h9pbri5etgasdpvv.apps.googleusercontent.com';
+    const LOGGED_IN_LIMIT = 20; // logged-in users get more
+    let currentUser = null;
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          currentUser = await res.json();
+          onLogin();
+        } else {
+          onLogout();
+        }
+      } catch { onLogout(); }
+    }
+
+    function onLogin() {
+      const sec = document.getElementById('userSection');
+      sec.style.position = 'relative';
+      sec.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div id="userAvatar" class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">
+            <img src="${currentUser.picture}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.style.display='none';this.parentElement.textContent='${(currentUser.name||'U')[0]}'">
+          </div>
+          <div id="userMenu" class="user-menu hidden">
+            <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:4px">
+              <div style="font-size:14px;font-weight:600">${currentUser.name}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.5)">${currentUser.email}</div>
+            </div>
+            <button onclick="logout()">🚪 Sign out</button>
+          </div>
+        </div>`;
+      // Update login section
+      const loginSec = document.getElementById('loginSection');
+      loginSec.innerHTML = `<div class="logged-in-badge">✓ Signed in as ${currentUser.name} · ${LOGGED_IN_LIMIT} images/day</div>`;
+      // Update free limit for logged-in users
+      state.freeLimit = LOGGED_IN_LIMIT;
+      updateCounter();
+    }
+
+    function onLogout() {
+      const sec = document.getElementById('userSection');
+      sec.innerHTML = `
+        <button class="google-btn" onclick="loginWithGoogle()">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Sign in with Google
+        </button>`;
+      const loginSec = document.getElementById('loginSection');
+      loginSec.innerHTML = `
+        <div class="login-banner">
+          <p>🎁 Sign in to get <strong>20 free images/day</strong> instead of 5</p>
+        </div>`;
+      state.freeLimit = FREE_LIMIT;
+      currentUser = null;
+    }
+
+    function loginWithGoogle() {
+      const redirectUri = window.location.origin + '/api/auth/callback';
+      const scope = 'openid email profile';
+      const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent`;
+      window.location.href = url;
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      document.getElementById('userMenu')?.classList.add('hidden');
+      onLogout();
+      updateCounter();
+    }
+
+    // Update getUsage to use dynamic limit
+    function getFreeLimit() { return state.freeLimit || FREE_LIMIT; }
+
     // --- Daily limit ---
     function getUsage() {
       const today = new Date().toISOString().slice(0, 10);
-      const data = JSON.parse(localStorage.getItem('bgv_usage') || '{}');
+      const key = currentUser ? 'bgv_usage_auth' : 'bgv_usage';
+      const data = JSON.parse(localStorage.getItem(key) || '{}');
       return data.date === today ? data : { date: today, count: 0 };
     }
     function incrementUsage() {
       const u = getUsage(); u.count++;
-      localStorage.setItem('bgv_usage', JSON.stringify(u));
+      const key = currentUser ? 'bgv_usage_auth' : 'bgv_usage';
+      localStorage.setItem(key, JSON.stringify(u));
       updateCounter();
     }
     function updateCounter() {
-      const u = getUsage(), r = FREE_LIMIT - u.count;
-      document.getElementById('counter').textContent = u.count > 0 ? `🆓 ${r}/${FREE_LIMIT} today` : '';
+      const u = getUsage(), limit = getFreeLimit(), r = limit - u.count;
+      document.getElementById('counter').textContent = u.count > 0 ? `🆓 ${Math.max(0,r)}/${limit} today` : '';
     }
+
+    // Init auth on page load
+    state.freeLimit = FREE_LIMIT;
     updateCounter();
+
+    // Check if we just came back from OAuth callback
+    if (window.location.search.includes('auth=success')) {
+      window.history.replaceState({}, '', '/');
+    }
+    checkAuth();
 
     // --- Drag & Drop ---
     const dropZone = document.getElementById('dropZone');
