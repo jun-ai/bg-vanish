@@ -1,6 +1,7 @@
 name = "bg-remover"
-main = "src/worker/index.ts"
+main = "dist/worker.js"
 compatibility_date = "2024-01-01"
+no_bundle = true
 
 [vars]
 MAX_FILE_SIZE = "10485760"
