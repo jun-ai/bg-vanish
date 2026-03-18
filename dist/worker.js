@@ -51,7 +51,7 @@ function handleAuthMe(request) {
   if (!token) return json({error:'Not authenticated'}, 401);
   try {
     const parts = token.split('.');
-    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[0]), 'binary')));
+    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[0]), c => c.charCodeAt(0))));
     if (payload.exp < Date.now()) return json({error:'Session expired'}, 401);
     const expectedSig = simpleHash(COOKIE_SECRET + JSON.stringify(payload));
     if (parts[1] !== expectedSig) return json({error:'Invalid session'}, 401);
