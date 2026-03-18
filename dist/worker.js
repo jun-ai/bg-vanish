@@ -38,7 +38,7 @@ async function handleAuthCallback(request, env) {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
-    const payloadB64 = btoa(sessionData);
+    const payloadB64 = btoa(new TextEncoder().encode(sessionData));
     const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
     const res = new Response(null, {status: 302, headers: new Headers({'Location': '/?auth=success'})});
     setCookie(res, 'session', sessionToken, 604800);
@@ -52,7 +52,7 @@ function handleAuthMe(request) {
   if (!token) return json({error:'Not authenticated'}, 401);
   try {
     const parts = token.split('.');
-    const payload = JSON.parse(atob(parts[0]));
+    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(parts[0]), 'binary')));
     if (payload.exp < Date.now()) return json({error:'Session expired'}, 401);
     const expectedSig = simpleHash(COOKIE_SECRET + JSON.stringify(payload));
     if (parts[1] !== expectedSig) return json({error:'Invalid session'}, 401);
