@@ -2,6 +2,6 @@
   "name": "bg-vanish",
   "private": true,
   "devDependencies": {
-    "wrangler": "^3.114.0"
+    "wrangler": "3.114.0"
   }
 }
