@@ -49,6 +49,7 @@ async function initDB(env) {
   try {
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS users (google_id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT, picture TEXT, credits INTEGER DEFAULT 3, plan TEXT DEFAULT 'free', created_at TEXT DEFAULT (datetime('now')))`).run();
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, google_id TEXT NOT NULL, paypal_order_id TEXT UNIQUE NOT NULL, plan_id TEXT NOT NULL, amount TEXT NOT NULL, currency TEXT DEFAULT 'USD', credits_added INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), captured_at TEXT, FOREIGN KEY (google_id) REFERENCES users(google_id))`).run();
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS webhook_events (id INTEGER PRIMARY KEY AUTOINCREMENT, transmission_id TEXT UNIQUE NOT NULL, event_type TEXT, resource_id TEXT, processed_at TEXT)').run();
   } catch(e) { console.error('DB init error:', e); }
 }
 
@@ -227,6 +228,84 @@ async function handlePayPalCaptureOrder(request, env) {
   } catch(e) { return json({error:e.message}, 500); }
 }
 
+// --- PayPal: Webhook Handler ---
+async function handlePayPalWebhook(request, env) {
+  try {
+    const body = await request.json();
+    const eventType = body.event_type;
+    const transmissionId = request.headers.get('paypal-transmission-id');
+
+    // Idempotency: skip if already processed
+    if (env.DB && transmissionId) {
+      const existing = await env.DB.prepare('SELECT id FROM webhook_events WHERE transmission_id = ?').bind(transmissionId).first();
+      if (existing) return json({message:'Already processed'});
+    }
+
+    // Verify webhook signature via PayPal API
+    if (env.PAYPAL_WEBHOOK_ID) {
+      const accessToken = await getPayPalAccessToken(env);
+      const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+      const verifyRes = await fetch(base + '/v1/notifications/verify-webhook-signature', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhook_id: env.PAYPAL_WEBHOOK_ID,
+          transmission_id: request.headers.get('paypal-transmission-id'),
+          transmission_time: request.headers.get('paypal-transmission-time'),
+          cert_url: request.headers.get('paypal-cert-url'),
+          auth_algo: request.headers.get('paypal-auth-algo'),
+          transmission_sig: request.headers.get('paypal-transmission-sig'),
+          webhook_event: body,
+        }),
+      });
+      const verifyData = await verifyRes.json();
+      if (verifyData.verification_status !== 'SUCCESS') {
+        console.error('Webhook signature verification failed:', verifyData);
+        return json({error:'Invalid signature'}, 401);
+      }
+    }
+
+    // Process event
+    const resourceId = body.resource?.id;
+    const customId = body.resource?.custom_id;
+
+    if (eventType === 'PAYMENT.CAPTURE.COMPLETED' && customId) {
+      const [googleId, planId] = customId.split(':');
+      const plan = PLANS[planId];
+      if (plan && env.DB) {
+        // Check if order already completed
+        const order = await env.DB.prepare("SELECT status FROM orders WHERE paypal_order_id = ?").bind(resourceId).first();
+        if (!order || order.status !== 'completed') {
+          await env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, planId, googleId).run();
+          await env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ?").bind(resourceId).run();
+        }
+      }
+    } else if (eventType === 'PAYMENT.CAPTURE.DENIED' && resourceId) {
+      if (env.DB) {
+        await env.DB.prepare("UPDATE orders SET status = 'denied' WHERE paypal_order_id = ?").bind(resourceId).run();
+      }
+    } else if (eventType === 'PAYMENT.CAPTURE.REFUNDED' && customId) {
+      const [googleId, planId] = customId.split(':');
+      const plan = PLANS[planId];
+      if (plan && env.DB) {
+        const order = await env.DB.prepare("SELECT status, credits_added FROM orders WHERE paypal_order_id = ?").bind(resourceId).first();
+        if (order && (order.status === 'completed' || order.status === 'refunded_partial')) {
+          await env.DB.prepare('UPDATE users SET credits = MAX(credits - ?, 0) WHERE google_id = ?').bind(order.credits_added || plan.credits, googleId).run();
+          const newStatus = order.status === 'refunded_partial' ? 'refunded_partial' : 'refunded';
+          await env.DB.prepare("UPDATE orders SET status = ? WHERE paypal_order_id = ?").bind(newStatus, resourceId).run();
+        }
+      }
+    }
+
+    // Record processed webhook
+    if (env.DB && transmissionId) {
+      try { await env.DB.prepare('INSERT OR IGNORE INTO webhook_events (transmission_id, event_type, resource_id, processed_at) VALUES (?, ?, ?, datetime("now"))').bind(transmissionId, eventType, resourceId).run(); } catch(e) { console.error('Webhook log error:', e); }
+    }
+
+    return json({received: true, event_type: eventType});
+  } catch(e) { console.error('Webhook error:', e); return json({error:e.message}, 500); }
+}
+
 // --- Main router ---
 export default {
   async fetch(request, env) {
@@ -244,6 +323,7 @@ export default {
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') return handleLogout(request);
     if (url.pathname === '/api/paypal/create-order' && request.method === 'POST') return handlePayPalCreateOrder(request, env);
     if (url.pathname === '/api/paypal/capture-order' && request.method === 'POST') return handlePayPalCaptureOrder(request, env);
+    if (url.pathname === '/api/paypal/webhook' && request.method === 'POST') return handlePayPalWebhook(request, env);
     if (url.pathname === '/api/health') return Response.json({status:'ok'});
     return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
   }
