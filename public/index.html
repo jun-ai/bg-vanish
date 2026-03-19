@@ -197,7 +197,7 @@
             <li>✓ Never expire</li>
             <li>✓ Up to 10MB per image</li>
           </ul>
-          <button class="cta-btn cta-secondary w-full">Buy with PayPal</button>
+          <button class="cta-btn cta-secondary w-full" onclick="buyCredits('starter')">Buy with PayPal</button>
         </div>
         <div class="pricing-card popular text-center relative">
           <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full">⭐ MOST POPULAR</div>
@@ -213,7 +213,7 @@
             <li>✓ Up to 10MB per image</li>
             <li>✓ Priority processing</li>
           </ul>
-          <button class="cta-btn cta-primary w-full">Buy with PayPal</button>
+          <button class="cta-btn cta-primary w-full" onclick="buyCredits('popular')">Buy with PayPal</button>
         </div>
         <div class="pricing-card text-center">
           <h3 class="text-lg font-bold mb-1">Pro</h3>
@@ -229,7 +229,7 @@
             <li>✓ Priority processing</li>
             <li>✓ Batch upload (5 images)</li>
           </ul>
-          <button class="cta-btn cta-secondary w-full">Buy with PayPal</button>
+          <button class="cta-btn cta-secondary w-full" onclick="buyCredits('pro_pack')">Buy with PayPal</button>
         </div>
       </div>
 
@@ -248,7 +248,7 @@
             <li>✓ Up to 10MB per image</li>
             <li>✓ Cancel anytime</li>
           </ul>
-          <button class="cta-btn cta-secondary w-full">Subscribe via PayPal</button>
+          <button class="cta-btn cta-secondary w-full opacity-50 cursor-not-allowed" disabled>Coming Soon</button>
         </div>
         <div class="pricing-card popular text-center relative">
           <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full">⭐ BEST VALUE</div>
@@ -266,7 +266,7 @@
             <li>✓ Batch upload (5 images)</li>
             <li>✓ Cancel anytime</li>
           </ul>
-          <button class="cta-btn cta-primary w-full">Subscribe via PayPal</button>
+          <button class="cta-btn cta-primary w-full opacity-50 cursor-not-allowed" disabled>Coming Soon</button>
         </div>
       </div>
 
@@ -661,6 +661,76 @@
       for (const i of items) { if (i.kind === 'file' && i.type.startsWith('image/')) files.push(i.getAsFile()); }
       if (files.length) handleFiles(files);
     });
+
+    // --- PayPal ---
+    let paypalLoaded = false;
+    function loadPayPalSDK() {
+      return new Promise((resolve, reject) => {
+        if (paypalLoaded && window.paypal) return resolve();
+        const script = document.createElement('script');
+        script.src = 'https://www.sandbox.paypal.com/sdk/js?client-id=AWGzJFEzcnBduA-it4lcUirsL0o2f5RsexRxiuW3vSO3Jm2loSYQZ1rueQz5KfzaPvh-Nytb-5zs-jYy&currency=USD&intent=capture';
+        script.onload = () => { paypalLoaded = true; resolve(); };
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function buyCredits(planId) {
+      if (!currentUser) { loginWithGoogle(); return; }
+      try {
+        await loadPayPalSDK();
+        const planAmounts = { starter: '4.99', popular: '9.99', pro_pack: '23.99' };
+        const amount = planAmounts[planId];
+        if (!amount) { alert('Invalid plan'); return; }
+
+        // Create order on server
+        const orderRes = await fetch('/api/paypal/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planId }),
+        });
+        if (!orderRes.ok) {
+          const err = await orderRes.json().catch(() => ({ error: 'Failed to create order' }));
+          alert(err.error || 'Failed to create order');
+          return;
+        }
+        const { orderId } = await orderRes.json();
+
+        // Render PayPal buttons in a modal-like overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'paypal-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px';
+        overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center"><h3 style="color:#333;margin:0 0 16px;font-size:18px">Complete Payment</h3><div id="paypal-buttons-container"></div><button onclick="document.getElementById(\'paypal-overlay\').remove()" style="margin-top:12px;background:none;border:none;color:#999;cursor:pointer;font-size:14px">Cancel</button></div>';
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        window.paypal.Buttons({
+          style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', height: 40 },
+          createOrder: () => orderId,
+          onApprove: async (data) => {
+            const capRes = await fetch('/api/paypal/capture-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: data.orderID }),
+            });
+            const result = await capRes.json();
+            if (!capRes.ok) {
+              alert('Payment verification failed: ' + (result.error || 'Unknown error'));
+              return;
+            }
+            overlay.remove();
+            // Refresh credits
+            await checkAuth();
+            alert('🎉 Payment successful! ' + result.creditsAdded + ' credits added to your account.');
+          },
+          onCancel: () => { overlay.remove(); },
+          onError: (err) => { console.error('PayPal error:', err); overlay.remove(); alert('PayPal error occurred. Please try again.'); },
+        }).render('#paypal-buttons-container');
+      } catch(e) {
+        console.error('PayPal init error:', e);
+        alert('Failed to load PayPal. Please try again.');
+      }
+    }
 
     // Init
     if (window.location.search.includes('auth=success')) {

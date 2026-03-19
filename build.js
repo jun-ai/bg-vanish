@@ -3,9 +3,17 @@ const path = require('path');
 
 const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
 
+// Pricing plans
+const PLANS = {
+  starter: { amount: '4.99', credits: 40 },
+  popular: { amount: '9.99', credits: 85 },
+  pro_pack: { amount: '23.99', credits: 200 },
+};
+
 const workerJs = `
 const HTML = ${JSON.stringify(html)};
 const COOKIE_SECRET = 'bg-vanish-session-2026';
+const PLANS = ${JSON.stringify(PLANS)};
 
 function parseCookie(h) {
   const c = {};
@@ -25,7 +33,7 @@ function b64Encode(str) {
 function b64Decode(b64) {
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
 }
-function json(data, status) { return new Response(JSON.stringify(data), {status, headers:{'Content-Type':'application/json'}}); }
+function json(data, status) { return new Response(JSON.stringify(data), {status, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}}); }
 
 async function getSessionUser(request, env) {
   const session = parseCookie(request.headers.get('cookie'));
@@ -36,18 +44,40 @@ async function getSessionUser(request, env) {
     const payload = b64Decode(parts[0]);
     if (payload.exp < Date.now()) return null;
     if (parts[1] !== simpleHash(COOKIE_SECRET + JSON.stringify(payload))) return null;
-    // Get credits from D1
-    let credits = 0;
+    let credits = 0, plan = 'free';
     if (env.DB) {
       try {
         const row = await env.DB.prepare('SELECT credits, plan FROM users WHERE google_id = ?').bind(payload.sub).first();
-        credits = row ? row.credits : 0;
+        if (row) { credits = row.credits; plan = row.plan; }
       } catch(e) { credits = 0; }
     }
-    return { ...payload, credits };
+    return { ...payload, credits, plan };
   } catch(e) { return null; }
 }
 
+// --- Init D1 tables ---
+async function initDB(env) {
+  if (!env.DB) return;
+  try {
+    await env.DB.prepare(\`CREATE TABLE IF NOT EXISTS users (google_id TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT, picture TEXT, credits INTEGER DEFAULT 3, plan TEXT DEFAULT 'free', created_at TEXT DEFAULT (datetime('now')))\`).run();
+    await env.DB.prepare(\`CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, google_id TEXT NOT NULL, paypal_order_id TEXT UNIQUE NOT NULL, plan_id TEXT NOT NULL, amount TEXT NOT NULL, currency TEXT DEFAULT 'USD', credits_added INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at TEXT DEFAULT (datetime('now')), captured_at TEXT, FOREIGN KEY (google_id) REFERENCES users(google_id))\`).run();
+  } catch(e) { console.error('DB init error:', e); }
+}
+
+// --- PayPal helpers ---
+async function getPayPalAccessToken(env) {
+  const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+  const res = await fetch(base + '/v1/oauth2/token', {
+    method: 'POST',
+    headers: { 'Authorization': 'Basic ' + btoa(env.PAYPAL_CLIENT_ID + ':' + env.PAYPAL_SECRET), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=client_credentials',
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error('PayPal auth failed: ' + t); }
+  const data = await res.json();
+  return data.access_token;
+}
+
+// --- Google OAuth ---
 async function handleAuthCallback(request, env) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -68,7 +98,7 @@ async function handleAuthCallback(request, env) {
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
     const payloadB64 = b64Encode(sessionData);
     const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
-    // Create user in D1 if not exists (give 3 free credits)
+    // Create user in D1 if not exists
     if (env.DB) {
       try {
         await env.DB.prepare(\`INSERT INTO users (google_id, email, name, picture, credits) VALUES (?, ?, ?, ?, 3) ON CONFLICT(google_id) DO NOTHING\`).bind(ud.id, ud.email, ud.name, ud.picture).run();
@@ -81,18 +111,17 @@ async function handleAuthCallback(request, env) {
 async function handleAuthMe(request, env) {
   const user = await getSessionUser(request, env);
   if (!user) return json({error:'Not authenticated'}, 401);
-  return json({id:user.sub, name:user.name, email:user.email, picture:user.picture, credits:user.credits});
+  return json({id:user.sub, name:user.name, email:user.email, picture:user.picture, credits:user.credits, plan:user.plan});
 }
 
 function handleLogout(request) {
   return new Response(JSON.stringify({success:true}), {headers:{'Content-Type':'application/json', 'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'}});
 }
 
+// --- Remove BG ---
 async function handleRemoveBg(request, env) {
-  // Check auth
   const user = await getSessionUser(request, env);
   if (!user) return json({error:'Please sign in to use this feature'}, 401);
-  // Check credits
   if (user.credits <= 0) return json({error:'No credits remaining. Please purchase more credits.'}, 402);
   const apiKey = env.REMOVE_BG_API_KEY;
   if (!apiKey) return json({error:'API key not configured'}, 500);
@@ -116,31 +145,107 @@ async function handleRemoveBg(request, env) {
     }
     // Deduct credit
     if (env.DB) {
-      try {
-        await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ?').bind(user.sub).run();
-      } catch(e) { console.error('D1 credit deduct error:', e); }
+      try { await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ?').bind(user.sub).run(); } catch(e) { console.error('D1 credit deduct error:', e); }
     }
     return new Response(await res.arrayBuffer(), {headers:{'Content-Type':'image/png','Cache-Control':'no-store'}});
   } catch(e) { return json({error:e.message||'Server error'}, 500); }
 }
 
-function handleAuthDebug(request) {
-  const ck = parseCookie(request.headers.get('cookie'));
-  return json({cookie: ck});
+// --- PayPal: Create Order ---
+async function handlePayPalCreateOrder(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({error:'Not authenticated'}, 401);
+  try {
+    const body = await request.json();
+    const planId = body.planId;
+    const plan = PLANS[planId];
+    if (!plan) return json({error:'Invalid plan'}, 400);
+
+    const accessToken = await getPayPalAccessToken(env);
+    const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+    const res = await fetch(base + '/v2/checkout/orders', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'CAPTURE',
+        purchase_units: [{ amount: { currency_code: 'USD', value: plan.amount, breakdown: { item_total: { currency_code: 'USD', value: plan.amount } } }, description: 'BG Vanish Credit Pack: ' + planId, custom_id: user.sub + ':' + planId }],
+      }),
+    });
+    if (!res.ok) { const t = await res.text(); return json({error:'PayPal create order failed', detail:t}, 502); }
+    const data = await res.json();
+    // Store pending order in D1
+    if (env.DB) {
+      try {
+        await env.DB.prepare('INSERT INTO orders (google_id, paypal_order_id, plan_id, amount, credits_added) VALUES (?, ?, ?, ?, ?)').bind(user.sub, data.id, planId, plan.amount, plan.credits).run();
+      } catch(e) { console.error('Order insert error:', e); }
+    }
+    return json({ orderId: data.id });
+  } catch(e) { return json({error:e.message}, 500); }
 }
 
+// --- PayPal: Capture Order ---
+async function handlePayPalCaptureOrder(request, env) {
+  const user = await getSessionUser(request, env);
+  if (!user) return json({error:'Not authenticated'}, 401);
+  try {
+    const body = await request.json();
+    const orderId = body.orderId;
+    if (!orderId) return json({error:'Missing orderId'}, 400);
+
+    const accessToken = await getPayPalAccessToken(env);
+    const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+    const res = await fetch(base + '/v2/checkout/orders/' + orderId + '/capture', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) { const t = await res.text(); return json({error:'PayPal capture failed', detail:t}, 502); }
+    const data = await res.json();
+    if (data.status !== 'COMPLETED') return json({error:'Payment not completed', status:data.status}, 400);
+
+    // Verify amount and add credits
+    const capture = data.purchase_units[0]?.payments?.captures[0];
+    if (!capture) return json({error:'No capture found'}, 400);
+    const paidAmount = capture.amount?.value;
+    const customId = data.purchase_units[0]?.custom_id;
+    const [paidGoogleId, planId] = (customId || '').split(':');
+    if (paidGoogleId !== user.sub) return json({error:'User mismatch'}, 403);
+    const plan = PLANS[planId];
+    if (!plan) return json({error:'Invalid plan'}, 400);
+    if (paidAmount !== plan.amount) return json({error:'Amount mismatch'}, 400);
+
+    // Check if already captured
+    if (env.DB) {
+      const existing = await env.DB.prepare('SELECT status FROM orders WHERE paypal_order_id = ?').bind(orderId).first();
+      if (existing && existing.status === 'completed') return json({message:'Already processed', credits: user.credits});
+    }
+
+    // Add credits
+    if (env.DB) {
+      await env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, planId, user.sub).run();
+      await env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ?").bind(orderId).run();
+    }
+    return json({message:'Payment successful', creditsAdded: plan.credits, planId});
+  } catch(e) { return json({error:e.message}, 500); }
+}
+
+// --- Main router ---
 export default {
   async fetch(request, env) {
+    // Init DB on first request
+    initDB(env);
+
     if (request.method === 'OPTIONS') return new Response(null, {headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
+
     const url = new URL(request.url);
     if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
     if (url.pathname === '/api/auth/me') return handleAuthMe(request, env);
-    if (url.pathname === '/api/auth/debug') return handleAuthDebug(request);
+    if (url.pathname === '/api/auth/debug') { const ck = parseCookie(request.headers.get('cookie')); return json({cookie: ck}); }
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') return handleLogout(request);
+    if (url.pathname === '/api/paypal/create-order' && request.method === 'POST') return handlePayPalCreateOrder(request, env);
+    if (url.pathname === '/api/paypal/capture-order' && request.method === 'POST') return handlePayPalCaptureOrder(request, env);
     if (url.pathname === '/api/health') return Response.json({status:'ok'});
-    // SPA fallback - serve HTML for all other routes
     return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
   }
 };
