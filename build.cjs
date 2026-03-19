@@ -3,16 +3,18 @@ const path = require('path');
 
 const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
 
-// Pricing plans
 const PLANS = {
   starter: { amount: '4.99', credits: 40 },
   popular: { amount: '9.99', credits: 85 },
   pro_pack: { amount: '23.99', credits: 200 },
 };
 
-const workerJs = `
-const HTML = ${JSON.stringify(html)};
-const PLANS = ${JSON.stringify(PLANS)};
+// Escape backticks so template literal doesn't break
+const htmlJson = JSON.stringify(html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+const plansJson = JSON.stringify(PLANS);
+
+const workerJs = `const HTML = ${htmlJson};
+const PLANS = ${plansJson};
 
 function getCookieSecret(env) { return env.COOKIE_SECRET || 'bg-vanish-session-2026'; }
 
@@ -59,7 +61,6 @@ async function getSessionUser(request, env) {
   } catch(e) { return null; }
 }
 
-// --- Init D1 tables ---
 async function initDB(env) {
   if (!env.DB) return;
   try {
@@ -69,7 +70,6 @@ async function initDB(env) {
   } catch(e) { console.error('DB init error:', e); }
 }
 
-// --- PayPal helpers ---
 async function getPayPalAccessToken(env) {
   const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
   const res = await fetch(base + '/v1/oauth2/token', {
@@ -82,7 +82,6 @@ async function getPayPalAccessToken(env) {
   return data.access_token;
 }
 
-// --- Google OAuth ---
 async function handleAuthCallback(request, env) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -93,7 +92,7 @@ async function handleAuthCallback(request, env) {
     const clientSecret = env.GOOGLE_CLIENT_SECRET || '';
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
       body: new URLSearchParams({code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code'}),
     });
     const td = await tokenRes.json();
@@ -103,7 +102,6 @@ async function handleAuthCallback(request, env) {
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
     const payloadB64 = b64Encode(sessionData);
     const sessionToken = payloadB64 + '.' + await hmacSign(getCookieSecret(env), sessionData);
-    // Create user in D1 if not exists
     if (env.DB) {
       try {
         await env.DB.prepare(\`INSERT INTO users (google_id, email, name, picture, credits) VALUES (?, ?, ?, ?, 3) ON CONFLICT(google_id) DO NOTHING\`).bind(ud.id, ud.email, ud.name, ud.picture).run();
@@ -123,7 +121,6 @@ function handleLogout(request) {
   return new Response(JSON.stringify({success:true}), {headers:{'Content-Type':'application/json', 'Set-Cookie': 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'}});
 }
 
-// --- Remove BG ---
 async function handleRemoveBg(request, env) {
   const user = await getSessionUser(request, env);
   if (!user) return json({error:'Please sign in to use this feature'}, 401);
@@ -136,7 +133,6 @@ async function handleRemoveBg(request, env) {
   const size = formData.get('size') || 'auto';
   if (!imageFile) return json({error:'No image provided'}, 400);
   if (imageFile.size > maxSize) return json({error:'File too large. Max '+(maxSize/1024/1024)+'MB'}, 400);
-  // Optimistic credit deduction first
   let creditDeducted = false;
   if (env.DB) {
     try {
@@ -167,8 +163,8 @@ async function handleRemoveBg(request, env) {
     }
     return json({error:e.message||'Server error'}, 500);
   }
+}
 
-// --- PayPal: Create Order ---
 async function handlePayPalCreateOrder(request, env) {
   const user = await getSessionUser(request, env);
   if (!user) return json({error:'Not authenticated'}, 401);
@@ -177,7 +173,6 @@ async function handlePayPalCreateOrder(request, env) {
     const planId = body.planId;
     const plan = PLANS[planId];
     if (!plan) return json({error:'Invalid plan'}, 400);
-
     const accessToken = await getPayPalAccessToken(env);
     const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
     const origin = new URL(request.url).origin;
@@ -197,36 +192,28 @@ async function handlePayPalCreateOrder(request, env) {
     });
     if (!res.ok) { const t = await res.text(); return json({error:'PayPal create order failed', detail:t}, 502); }
     const data = await res.json();
-    // Store pending order in D1
     if (env.DB) {
       try {
         await env.DB.prepare('INSERT INTO orders (google_id, paypal_order_id, plan_id, amount, credits_added) VALUES (?, ?, ?, ?, ?)').bind(user.sub, data.id, planId, plan.amount, plan.credits).run();
       } catch(e) { console.error('Order insert error:', e); }
     }
-    // Redirect to PayPal approve URL
     const approveLink = data.links?.find(l => l.rel === 'approve');
-    if (approveLink) {
-      return json({ approveUrl: approveLink.href, orderId: data.id });
-    }
+    if (approveLink) { return json({ approveUrl: approveLink.href, orderId: data.id }); }
     return json({ orderId: data.id, links: data.links });
   } catch(e) { return json({error:e.message}, 500); }
 }
 
-// --- PayPal: Capture Order ---
 async function handlePayPalCaptureOrder(request, env) {
   try {
     const body = await request.json();
     const orderId = body.orderId;
     if (!orderId) return json({error:'Missing orderId'}, 400);
-
-    // Verify order exists in D1
     let orderRecord = null;
     if (env.DB) {
       orderRecord = await env.DB.prepare('SELECT * FROM orders WHERE paypal_order_id = ?').bind(orderId).first();
     }
     if (!orderRecord) return json({error:'Order not found'}, 404);
     if (orderRecord.status === 'completed') return json({message:'Already processed', creditsAdded: orderRecord.credits_added});
-
     const accessToken = await getPayPalAccessToken(env);
     const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
     const res = await fetch(base + '/v2/checkout/orders/' + orderId + '/capture', {
@@ -236,16 +223,12 @@ async function handlePayPalCaptureOrder(request, env) {
     if (!res.ok) { const t = await res.text(); return json({error:'PayPal capture failed', detail:t}, 502); }
     const data = await res.json();
     if (data.status !== 'COMPLETED') return json({error:'Payment not completed', status:data.status}, 400);
-
-    // Verify amount matches
     const capture = data.purchase_units[0]?.payments?.captures[0];
     if (!capture) return json({error:'No capture found'}, 400);
     const paidAmount = capture.amount?.value;
     const plan = PLANS[orderRecord.plan_id];
     if (!plan) return json({error:'Invalid plan'}, 400);
     if (paidAmount !== plan.amount) return json({error:'Amount mismatch: expected ' + plan.amount + ' got ' + paidAmount}, 400);
-
-    // Add credits + mark order completed in a single batch (atomic)
     if (env.DB) {
       try {
         await env.DB.batch([
@@ -253,8 +236,6 @@ async function handlePayPalCaptureOrder(request, env) {
           env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ? AND status != 'completed'").bind(orderId),
         ]);
       } catch(e) {
-        // D1 batch failed, but PayPal already captured the payment
-        // Webhook will retry and handle this
         console.error('D1 batch error after PayPal capture:', e);
         return json({error:'Database update failed. Payment was captured but credits not added. Webhook will retry.', orderId}, 500);
       }
@@ -263,20 +244,15 @@ async function handlePayPalCaptureOrder(request, env) {
   } catch(e) { return json({error:e.message}, 500); }
 }
 
-// --- PayPal: Webhook Handler ---
 async function handlePayPalWebhook(request, env) {
   try {
     const body = await request.json();
     const eventType = body.event_type;
     const transmissionId = request.headers.get('paypal-transmission-id');
-
-    // Idempotency: skip if already processed
     if (env.DB && transmissionId) {
       const existing = await env.DB.prepare('SELECT id FROM webhook_events WHERE transmission_id = ?').bind(transmissionId).first();
       if (existing) return json({message:'Already processed'});
     }
-
-    // Verify webhook signature via PayPal API
     if (env.PAYPAL_WEBHOOK_ID) {
       const accessToken = await getPayPalAccessToken(env);
       const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
@@ -299,16 +275,12 @@ async function handlePayPalWebhook(request, env) {
         return json({error:'Invalid signature'}, 401);
       }
     }
-
-    // Process event
     const resourceId = body.resource?.id;
     const customId = body.resource?.custom_id;
-
     if (eventType === 'PAYMENT.CAPTURE.COMPLETED' && customId) {
       const [googleId, planId] = customId.split(':');
       const plan = PLANS[planId];
       if (plan && env.DB) {
-        // Check if order already completed (idempotent)
         const order = await env.DB.prepare("SELECT status FROM orders WHERE paypal_order_id = ?").bind(resourceId).first();
         if (!order || order.status !== 'completed') {
           try {
@@ -316,10 +288,7 @@ async function handlePayPalWebhook(request, env) {
               env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, planId, googleId),
               env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ? AND status != 'completed'").bind(resourceId),
             ]);
-          } catch(e) {
-            console.error('Webhook D1 batch error (COMPLETED):', e);
-            // PayPal will retry webhook
-          }
+          } catch(e) { console.error('Webhook D1 batch error (COMPLETED):', e); }
         }
       }
     } else if (eventType === 'PAYMENT.CAPTURE.DENIED' && resourceId) {
@@ -339,30 +308,21 @@ async function handlePayPalWebhook(request, env) {
               env.DB.prepare('UPDATE users SET credits = MAX(credits - ?, 0) WHERE google_id = ?').bind(order.credits_added || plan.credits, googleId),
               env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE paypal_order_id = ? AND status = 'completed'").bind(resourceId),
             ]);
-          } catch(e) {
-            console.error('Webhook D1 batch error (REFUNDED):', e);
-          }
+          } catch(e) { console.error('Webhook D1 batch error (REFUNDED):', e); }
         }
       }
     }
-
-    // Record processed webhook
     if (env.DB && transmissionId) {
       try { await env.DB.prepare('INSERT OR IGNORE INTO webhook_events (transmission_id, event_type, resource_id, processed_at) VALUES (?, ?, ?, datetime("now"))').bind(transmissionId, eventType, resourceId).run(); } catch(e) { console.error('Webhook log error:', e); }
     }
-
     return json({received: true, event_type: eventType});
   } catch(e) { console.error('Webhook error:', e); return json({error:e.message}, 500); }
 }
 
-// --- Main router ---
 export default {
   async fetch(request, env) {
-    // Init DB on first request
     initDB(env);
-
     if (request.method === 'OPTIONS') return new Response(null, {headers:{'Access-Control-Allow-Origin':url.origin,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
-
     const url = new URL(request.url);
     if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
@@ -379,5 +339,5 @@ export default {
 `;
 
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
-fs.writeFileSync(path.join(__dirname, 'dist/worker.mjs'), workerJs);
-console.log('✅ Built dist/worker.mjs (' + workerJs.length + ' bytes)');
+fs.writeFileSync(path.join(__dirname, 'dist/worker.js'), workerJs);
+console.log('✅ Built dist/worker.js (' + workerJs.length + ' bytes)');
