@@ -379,5 +379,5 @@ export default {
 `;
 
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
-fs.writeFileSync(path.join(__dirname, 'dist/worker.js'), workerJs);
-console.log('✅ Built dist/worker.js (' + workerJs.length + ' bytes)');
+fs.writeFileSync(path.join(__dirname, 'dist/worker.mjs'), workerJs);
+console.log('✅ Built dist/worker.mjs (' + workerJs.length + ' bytes)');
