@@ -10,7 +10,7 @@ database_id = "c4926cbc-f3e7-46fc-ba27-c68fdcc63350"
 
 [vars]
 MAX_FILE_SIZE = "10485760"
-PAYPAL_CLIENT_ID = "AWGzJFEzcnBduA-it4lcUirsL0o2f5RsexRxiuW3vSO3Jm2loSYQZ1rueQz5KfzaPvh-Nytb-5zs-jYy"
+PAYPAL_CLIENT_ID = "AaQOJsxVeKl5RosgAP-Bs8jg2cNIhiDlw-TURgxvwCQzzpJofKRyYWhz7Pe8ZW7MsQAorz_qtzJsk8Ca"
 # PAYPAL_SECRET - use: npx wrangler secret put PAYPAL_SECRET
-PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com"
-PAYPAL_WEBHOOK_ID = "7W9482580P448760C"
+PAYPAL_BASE_URL = "https://api-m.paypal.com"
+PAYPAL_WEBHOOK_ID = "1EE60404J8957335A"
