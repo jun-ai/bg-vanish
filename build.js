@@ -164,12 +164,19 @@ async function handlePayPalCreateOrder(request, env) {
 
     const accessToken = await getPayPalAccessToken(env);
     const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+    const origin = new URL(request.url).origin;
     const res = await fetch(base + '/v2/checkout/orders', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         intent: 'CAPTURE',
         purchase_units: [{ amount: { currency_code: 'USD', value: plan.amount, breakdown: { item_total: { currency_code: 'USD', value: plan.amount } } }, description: 'BG Vanish Credit Pack: ' + planId, custom_id: user.sub + ':' + planId }],
+        application_context: {
+          brand_name: 'BG Vanish',
+          return_url: origin + '/?paypal=success',
+          cancel_url: origin + '/?paypal=cancel',
+          user_action: 'PAY_NOW',
+        },
       }),
     });
     if (!res.ok) { const t = await res.text(); return json({error:'PayPal create order failed', detail:t}, 502); }
@@ -180,17 +187,11 @@ async function handlePayPalCreateOrder(request, env) {
         await env.DB.prepare('INSERT INTO orders (google_id, paypal_order_id, plan_id, amount, credits_added) VALUES (?, ?, ?, ?, ?)').bind(user.sub, data.id, planId, plan.amount, plan.credits).run();
       } catch(e) { console.error('Order insert error:', e); }
     }
-    // Build approve URL for redirect-based checkout
+    // Redirect to PayPal approve URL
     const approveLink = data.links?.find(l => l.rel === 'approve');
     if (approveLink) {
-      const origin = new URL(request.url).origin;
-      const sep = approveLink.href.includes('?') ? '&' : '?';
-      const finalUrl = approveLink.href + sep +
-        'return_url=' + encodeURIComponent(origin + '/?paypal=success&token=' + data.id) +
-        '&cancel_url=' + encodeURIComponent(origin + '/?paypal=cancel');
-      return json({ approveUrl: finalUrl, orderId: data.id });
+      return json({ approveUrl: approveLink.href, orderId: data.id });
     }
-    // Fallback: return order links for debugging
     return json({ orderId: data.id, links: data.links });
   } catch(e) { return json({error:e.message}, 500); }
 }
