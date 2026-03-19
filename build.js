@@ -179,6 +179,17 @@ async function handlePayPalCreateOrder(request, env) {
         await env.DB.prepare('INSERT INTO orders (google_id, paypal_order_id, plan_id, amount, credits_added) VALUES (?, ?, ?, ?, ?)').bind(user.sub, data.id, planId, plan.amount, plan.credits).run();
       } catch(e) { console.error('Order insert error:', e); }
     }
+    // Build approve URL for redirect-based checkout
+    const approveLink = data.links?.find(l => l.rel === 'approve');
+    const cancelLink = data.links?.find(l => l.rel === 'cancel');
+    if (approveLink && cancelLink) {
+      const origin = new URL(request.url).origin;
+      const sep = approveLink.href.includes('?') ? '&' : '?';
+      const finalUrl = approveLink.href + sep +
+        'return_url=' + encodeURIComponent(origin + '/?paypal=success&token=' + data.id) +
+        '&cancel_url=' + encodeURIComponent(origin + '/?paypal=cancel');
+      return json({ approveUrl: finalUrl });
+    }
     return json({ orderId: data.id });
   } catch(e) { return json({error:e.message}, 500); }
 }

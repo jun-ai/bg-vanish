@@ -662,28 +662,10 @@
       if (files.length) handleFiles(files);
     });
 
-    // --- PayPal ---
-    let paypalLoaded = false;
-    function loadPayPalSDK() {
-      return new Promise((resolve, reject) => {
-        if (paypalLoaded && window.paypal) return resolve();
-        const script = document.createElement('script');
-        script.src = 'https://www.sandbox.paypal.com/sdk/js?client-id=AWGzJFEzcnBduA-it4lcUirsL0o2f5RsexRxiuW3vSO3Jm2loSYQZ1rueQz5KfzaPvh-Nytb-5zs-jYy&currency=USD&intent=capture';
-        script.onload = () => { paypalLoaded = true; resolve(); };
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
-
+    // --- PayPal (redirect-based, no JS SDK needed) ---
     async function buyCredits(planId) {
       if (!currentUser) { loginWithGoogle(); return; }
       try {
-        await loadPayPalSDK();
-        const planAmounts = { starter: '4.99', popular: '9.99', pro_pack: '23.99' };
-        const amount = planAmounts[planId];
-        if (!amount) { alert('Invalid plan'); return; }
-
-        // Create order on server
         const orderRes = await fetch('/api/paypal/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -694,43 +676,55 @@
           alert(err.error || 'Failed to create order');
           return;
         }
-        const { orderId } = await orderRes.json();
+        const { approveUrl } = await orderRes.json();
+        if (approveUrl) {
+          window.location.href = approveUrl;
+        } else {
+          alert('Failed to create PayPal payment link');
+        }
+      } catch(e) {
+        console.error('PayPal error:', e);
+        alert('Failed to create order. Please try again.');
+      }
+    }
 
-        // Render PayPal buttons in a modal-like overlay
-        const overlay = document.createElement('div');
-        overlay.id = 'paypal-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px';
-        overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:32px;max-width:400px;width:100%;text-align:center"><h3 style="color:#333;margin:0 0 16px;font-size:18px">Complete Payment</h3><div id="paypal-buttons-container"></div><button onclick="document.getElementById(\'paypal-overlay\').remove()" style="margin-top:12px;background:none;border:none;color:#999;cursor:pointer;font-size:14px">Cancel</button></div>';
-        document.body.appendChild(overlay);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    // --- Handle PayPal return ---
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const paypalSuccess = params.get('paypal') === 'success';
+      const paypalCancel = params.get('paypal') === 'cancel';
+      const paypalError = params.get('paypal') === 'error';
+      const orderId = params.get('token');
 
-        window.paypal.Buttons({
-          style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal', height: 40 },
-          createOrder: () => orderId,
-          onApprove: async (data) => {
+      if (paypalSuccess && orderId) {
+        // Auto-capture on return
+        (async function() {
+          try {
             const capRes = await fetch('/api/paypal/capture-order', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: data.orderID }),
+              body: JSON.stringify({ orderId }),
             });
             const result = await capRes.json();
-            if (!capRes.ok) {
-              alert('Payment verification failed: ' + (result.error || 'Unknown error'));
-              return;
+            if (capRes.ok) {
+              alert('🎉 Payment successful! ' + result.creditsAdded + ' credits added to your account.');
+            } else {
+              alert('Payment failed: ' + (result.error || 'Unknown error'));
             }
-            overlay.remove();
-            // Refresh credits
-            await checkAuth();
-            alert('🎉 Payment successful! ' + result.creditsAdded + ' credits added to your account.');
-          },
-          onCancel: () => { overlay.remove(); },
-          onError: (err) => { console.error('PayPal error:', err); overlay.remove(); alert('PayPal error occurred. Please try again.'); },
-        }).render('#paypal-buttons-container');
-      } catch(e) {
-        console.error('PayPal init error:', e);
-        alert('Failed to load PayPal. Please try again.');
+          } catch(e) {
+            alert('Payment verification failed: ' + e.message);
+          }
+          window.history.replaceState({}, '', '/');
+          checkAuth();
+        })();
+      } else if (paypalCancel) {
+        alert('Payment was cancelled.');
+        window.history.replaceState({}, '', '/');
+      } else if (paypalError) {
+        alert('Payment error occurred. Please try again.');
+        window.history.replaceState({}, '', '/');
       }
-    }
+    })();
 
     // Init
     if (window.location.search.includes('auth=success')) {
