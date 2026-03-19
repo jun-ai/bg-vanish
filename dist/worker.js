@@ -186,12 +186,18 @@ async function handlePayPalCreateOrder(request, env) {
 
 // --- PayPal: Capture Order ---
 async function handlePayPalCaptureOrder(request, env) {
-  const user = await getSessionUser(request, env);
-  if (!user) return json({error:'Not authenticated'}, 401);
   try {
     const body = await request.json();
     const orderId = body.orderId;
     if (!orderId) return json({error:'Missing orderId'}, 400);
+
+    // Verify order exists in D1
+    let orderRecord = null;
+    if (env.DB) {
+      orderRecord = await env.DB.prepare('SELECT * FROM orders WHERE paypal_order_id = ?').bind(orderId).first();
+    }
+    if (!orderRecord) return json({error:'Order not found'}, 404);
+    if (orderRecord.status === 'completed') return json({message:'Already processed', creditsAdded: orderRecord.credits_added});
 
     const accessToken = await getPayPalAccessToken(env);
     const base = env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
@@ -203,29 +209,20 @@ async function handlePayPalCaptureOrder(request, env) {
     const data = await res.json();
     if (data.status !== 'COMPLETED') return json({error:'Payment not completed', status:data.status}, 400);
 
-    // Verify amount and add credits
+    // Verify amount matches
     const capture = data.purchase_units[0]?.payments?.captures[0];
     if (!capture) return json({error:'No capture found'}, 400);
     const paidAmount = capture.amount?.value;
-    const customId = data.purchase_units[0]?.custom_id;
-    const [paidGoogleId, planId] = (customId || '').split(':');
-    if (paidGoogleId !== user.sub) return json({error:'User mismatch'}, 403);
-    const plan = PLANS[planId];
+    const plan = PLANS[orderRecord.plan_id];
     if (!plan) return json({error:'Invalid plan'}, 400);
-    if (paidAmount !== plan.amount) return json({error:'Amount mismatch'}, 400);
-
-    // Check if already captured
-    if (env.DB) {
-      const existing = await env.DB.prepare('SELECT status FROM orders WHERE paypal_order_id = ?').bind(orderId).first();
-      if (existing && existing.status === 'completed') return json({message:'Already processed', credits: user.credits});
-    }
+    if (paidAmount !== plan.amount) return json({error:'Amount mismatch: expected ' + plan.amount + ' got ' + paidAmount}, 400);
 
     // Add credits
     if (env.DB) {
-      await env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, planId, user.sub).run();
+      await env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, orderRecord.plan_id, orderRecord.google_id).run();
       await env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ?").bind(orderId).run();
     }
-    return json({message:'Payment successful', creditsAdded: plan.credits, planId});
+    return json({message:'Payment successful', creditsAdded: plan.credits, planId: orderRecord.plan_id});
   } catch(e) { return json({error:e.message}, 500); }
 }
 
