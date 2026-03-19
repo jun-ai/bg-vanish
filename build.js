@@ -12,8 +12,9 @@ const PLANS = {
 
 const workerJs = `
 const HTML = ${JSON.stringify(html)};
-const COOKIE_SECRET = 'bg-vanish-session-2026';
 const PLANS = ${JSON.stringify(PLANS)};
+
+function getCookieSecret(env) { return env.COOKIE_SECRET || 'bg-vanish-session-2026'; }
 
 function parseCookie(h) {
   const c = {};
@@ -21,10 +22,13 @@ function parseCookie(h) {
   h.split(';').forEach(p => { const [k,v] = p.trim().split('='); if(k) c[k]=v; });
   return c;
 }
-function simpleHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-  return Math.abs(h).toString(36).padStart(8, '0');
+async function hmacSign(key, message) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(key);
+  const msgData = encoder.encode(message);
+  const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 function b64Encode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -43,7 +47,7 @@ async function getSessionUser(request, env) {
     const parts = token.split('.');
     const payload = b64Decode(parts[0]);
     if (payload.exp < Date.now()) return null;
-    if (parts[1] !== simpleHash(COOKIE_SECRET + JSON.stringify(payload))) return null;
+    if (parts[1] !== await hmacSign(getCookieSecret(env), JSON.stringify(payload))) return null;
     let credits = 0, plan = 'free';
     if (env.DB) {
       try {
@@ -98,7 +102,7 @@ async function handleAuthCallback(request, env) {
     const ud = await userRes.json();
     const sessionData = JSON.stringify({sub:ud.id, name:ud.name, email:ud.email, picture:ud.picture, exp:Date.now()+604800000});
     const payloadB64 = b64Encode(sessionData);
-    const sessionToken = payloadB64 + '.' + simpleHash(COOKIE_SECRET + sessionData);
+    const sessionToken = payloadB64 + '.' + await hmacSign(getCookieSecret(env), sessionData);
     // Create user in D1 if not exists
     if (env.DB) {
       try {
@@ -133,23 +137,37 @@ async function handleRemoveBg(request, env) {
     const size = formData.get('size') || 'auto';
     if (!imageFile) return json({error:'No image provided'}, 400);
     if (imageFile.size > maxSize) return json({error:'File too large. Max '+(maxSize/1024/1024)+'MB'}, 400);
-    const bg = new FormData();
-    bg.append('image_file', imageFile, imageFile.name);
-    bg.append('size', size);
-    const res = await fetch('https://api.remove.bg/v1.0/removebg', {method:'POST', headers:{'X-Api-Key':apiKey}, body:bg});
-    if (!res.ok) {
-      const txt = await res.text();
-      let msg;
-      try { const j = JSON.parse(txt); msg = (j.errors&&j.errors[0]&&j.errors[0].title)||txt; } catch(e) { msg='Remove.bg error: '+res.status; }
-      if (res.status === 402) return json({error:'API credits exhausted.'}, 503);
-      return json({error:msg}, res.status);
-    }
-    // Deduct credit
+    // Optimistic credit deduction first
     if (env.DB) {
-      try { await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ?').bind(user.sub).run(); } catch(e) { console.error('D1 credit deduct error:', e); }
+      try {
+        const deductResult = await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ? AND credits > 0').bind(user.sub).run();
+        if (!deductResult.meta.changes) return json({error:'No credits remaining. Please purchase more credits.'}, 402);
+      } catch(e) { return json({error:'Credit deduction failed'}, 500); }
     }
-    return new Response(await res.arrayBuffer(), {headers:{'Content-Type':'image/png','Cache-Control':'no-store'}});
-  } catch(e) { return json({error:e.message||'Server error'}, 500); }
+    try {
+      const bg = new FormData();
+      bg.append('image_file', imageFile, imageFile.name);
+      bg.append('size', size);
+      const res = await fetch('https://api.remove.bg/v1.0/removebg', {method:'POST', headers:{'X-Api-Key':apiKey}, body:bg});
+      if (!res.ok) {
+        // Refund credit on API failure
+        if (env.DB) {
+          try { await env.DB.prepare('UPDATE users SET credits = credits + 1 WHERE google_id = ?').bind(user.sub).run(); } catch(e) { console.error('Credit refund error:', e); }
+        }
+        const txt = await res.text();
+        let msg;
+        try { const j = JSON.parse(txt); msg = (j.errors&&j.errors[0]&&j.errors[0].title)||txt; } catch(e) { msg='Remove.bg error: '+res.status; }
+        if (res.status === 402) return json({error:'API credits exhausted.'}, 503);
+        return json({error:msg}, res.status);
+      }
+      return new Response(await res.arrayBuffer(), {headers:{'Content-Type':'image/png','Cache-Control':'no-store'}});
+    } catch(e) {
+      // Refund credit on exception
+      if (env.DB) {
+        try { await env.DB.prepare('UPDATE users SET credits = credits + 1 WHERE google_id = ?').bind(user.sub).run(); } catch(ce) { console.error('Credit refund error:', ce); }
+      }
+      return json({error:e.message||'Server error'}, 500);
+    }
 }
 
 // --- PayPal: Create Order ---

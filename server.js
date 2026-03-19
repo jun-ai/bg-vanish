@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const HTML = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
-const API_KEY = process.env.REMOVE_BG_API_KEY || 'GRtvquHnvKPKAewykHtPLN2K';
+const API_KEY = process.env.REMOVE_BG_API_KEY;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '480367987155-qsuif9totrl50ci5h9pbri5etgasdpvv.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const COOKIE_SECRET = process.env.COOKIE_SECRET || 'bg-vanish-session-key-2026';
