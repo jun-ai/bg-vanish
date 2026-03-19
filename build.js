@@ -229,10 +229,19 @@ async function handlePayPalCaptureOrder(request, env) {
     if (!plan) return json({error:'Invalid plan'}, 400);
     if (paidAmount !== plan.amount) return json({error:'Amount mismatch: expected ' + plan.amount + ' got ' + paidAmount}, 400);
 
-    // Add credits
+    // Add credits + mark order completed in a single batch (atomic)
     if (env.DB) {
-      await env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, orderRecord.plan_id, orderRecord.google_id).run();
-      await env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ?").bind(orderId).run();
+      try {
+        await env.DB.batch([
+          env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, orderRecord.plan_id, orderRecord.google_id),
+          env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ? AND status != 'completed'").bind(orderId),
+        ]);
+      } catch(e) {
+        // D1 batch failed, but PayPal already captured the payment
+        // Webhook will retry and handle this
+        console.error('D1 batch error after PayPal capture:', e);
+        return json({error:'Database update failed. Payment was captured but credits not added. Webhook will retry.', orderId}, 500);
+      }
     }
     return json({message:'Payment successful', creditsAdded: plan.credits, planId: orderRecord.plan_id});
   } catch(e) { return json({error:e.message}, 500); }
@@ -283,26 +292,40 @@ async function handlePayPalWebhook(request, env) {
       const [googleId, planId] = customId.split(':');
       const plan = PLANS[planId];
       if (plan && env.DB) {
-        // Check if order already completed
+        // Check if order already completed (idempotent)
         const order = await env.DB.prepare("SELECT status FROM orders WHERE paypal_order_id = ?").bind(resourceId).first();
         if (!order || order.status !== 'completed') {
-          await env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, planId, googleId).run();
-          await env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ?").bind(resourceId).run();
+          try {
+            await env.DB.batch([
+              env.DB.prepare('UPDATE users SET credits = credits + ?, plan = ? WHERE google_id = ?').bind(plan.credits, planId, googleId),
+              env.DB.prepare("UPDATE orders SET status = 'completed', captured_at = datetime('now') WHERE paypal_order_id = ? AND status != 'completed'").bind(resourceId),
+            ]);
+          } catch(e) {
+            console.error('Webhook D1 batch error (COMPLETED):', e);
+            // PayPal will retry webhook
+          }
         }
       }
     } else if (eventType === 'PAYMENT.CAPTURE.DENIED' && resourceId) {
       if (env.DB) {
-        await env.DB.prepare("UPDATE orders SET status = 'denied' WHERE paypal_order_id = ?").bind(resourceId).run();
+        try {
+          await env.DB.prepare("UPDATE orders SET status = 'denied' WHERE paypal_order_id = ? AND status = 'pending'").bind(resourceId).run();
+        } catch(e) { console.error('Webhook D1 error (DENIED):', e); }
       }
     } else if (eventType === 'PAYMENT.CAPTURE.REFUNDED' && customId) {
       const [googleId, planId] = customId.split(':');
       const plan = PLANS[planId];
       if (plan && env.DB) {
         const order = await env.DB.prepare("SELECT status, credits_added FROM orders WHERE paypal_order_id = ?").bind(resourceId).first();
-        if (order && (order.status === 'completed' || order.status === 'refunded_partial')) {
-          await env.DB.prepare('UPDATE users SET credits = MAX(credits - ?, 0) WHERE google_id = ?').bind(order.credits_added || plan.credits, googleId).run();
-          const newStatus = order.status === 'refunded_partial' ? 'refunded_partial' : 'refunded';
-          await env.DB.prepare("UPDATE orders SET status = ? WHERE paypal_order_id = ?").bind(newStatus, resourceId).run();
+        if (order && order.status === 'completed') {
+          try {
+            await env.DB.batch([
+              env.DB.prepare('UPDATE users SET credits = MAX(credits - ?, 0) WHERE google_id = ?').bind(order.credits_added || plan.credits, googleId),
+              env.DB.prepare("UPDATE orders SET status = 'refunded' WHERE paypal_order_id = ? AND status = 'completed'").bind(resourceId),
+            ]);
+          } catch(e) {
+            console.error('Webhook D1 batch error (REFUNDED):', e);
+          }
         }
       }
     }
