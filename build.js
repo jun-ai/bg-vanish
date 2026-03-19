@@ -131,44 +131,42 @@ async function handleRemoveBg(request, env) {
   const apiKey = env.REMOVE_BG_API_KEY;
   if (!apiKey) return json({error:'API key not configured'}, 500);
   const maxSize = parseInt(env.MAX_FILE_SIZE || '10485760', 10);
-  try {
-    const formData = await request.formData();
-    const imageFile = formData.get('image');
-    const size = formData.get('size') || 'auto';
-    if (!imageFile) return json({error:'No image provided'}, 400);
-    if (imageFile.size > maxSize) return json({error:'File too large. Max '+(maxSize/1024/1024)+'MB'}, 400);
-    // Optimistic credit deduction first
-    if (env.DB) {
-      try {
-        const deductResult = await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ? AND credits > 0').bind(user.sub).run();
-        if (!deductResult.meta.changes) return json({error:'No credits remaining. Please purchase more credits.'}, 402);
-      } catch(e) { return json({error:'Credit deduction failed'}, 500); }
-    }
+  const formData = await request.formData();
+  const imageFile = formData.get('image');
+  const size = formData.get('size') || 'auto';
+  if (!imageFile) return json({error:'No image provided'}, 400);
+  if (imageFile.size > maxSize) return json({error:'File too large. Max '+(maxSize/1024/1024)+'MB'}, 400);
+  // Optimistic credit deduction first
+  let creditDeducted = false;
+  if (env.DB) {
     try {
-      const bg = new FormData();
-      bg.append('image_file', imageFile, imageFile.name);
-      bg.append('size', size);
-      const res = await fetch('https://api.remove.bg/v1.0/removebg', {method:'POST', headers:{'X-Api-Key':apiKey}, body:bg});
-      if (!res.ok) {
-        // Refund credit on API failure
-        if (env.DB) {
-          try { await env.DB.prepare('UPDATE users SET credits = credits + 1 WHERE google_id = ?').bind(user.sub).run(); } catch(e) { console.error('Credit refund error:', e); }
-        }
-        const txt = await res.text();
-        let msg;
-        try { const j = JSON.parse(txt); msg = (j.errors&&j.errors[0]&&j.errors[0].title)||txt; } catch(e) { msg='Remove.bg error: '+res.status; }
-        if (res.status === 402) return json({error:'API credits exhausted.'}, 503);
-        return json({error:msg}, res.status);
+      const deductResult = await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE google_id = ? AND credits > 0').bind(user.sub).run();
+      if (!deductResult.meta.changes) return json({error:'No credits remaining. Please purchase more credits.'}, 402);
+      creditDeducted = true;
+    } catch(e) { return json({error:'Credit deduction failed'}, 500); }
+  }
+  try {
+    const bg = new FormData();
+    bg.append('image_file', imageFile, imageFile.name);
+    bg.append('size', size);
+    const res = await fetch('https://api.remove.bg/v1.0/removebg', {method:'POST', headers:{'X-Api-Key':apiKey}, body:bg});
+    if (!res.ok) {
+      if (env.DB && creditDeducted) {
+        try { await env.DB.prepare('UPDATE users SET credits = credits + 1 WHERE google_id = ?').bind(user.sub).run(); } catch(e) { console.error('Credit refund error:', e); }
       }
-      return new Response(await res.arrayBuffer(), {headers:{'Content-Type':'image/png','Cache-Control':'no-store'}});
-    } catch(e) {
-      // Refund credit on exception
-      if (env.DB) {
-        try { await env.DB.prepare('UPDATE users SET credits = credits + 1 WHERE google_id = ?').bind(user.sub).run(); } catch(ce) { console.error('Credit refund error:', ce); }
-      }
-      return json({error:e.message||'Server error'}, 500);
+      const txt = await res.text();
+      let msg;
+      try { const j = JSON.parse(txt); msg = (j.errors&&j.errors[0]&&j.errors[0].title)||txt; } catch(e) { msg='Remove.bg error: '+res.status; }
+      if (res.status === 402) return json({error:'API credits exhausted.'}, 503);
+      return json({error:msg}, res.status);
     }
-}
+    return new Response(await res.arrayBuffer(), {headers:{'Content-Type':'image/png','Cache-Control':'no-store'}});
+  } catch(e) {
+    if (env.DB && creditDeducted) {
+      try { await env.DB.prepare('UPDATE users SET credits = credits + 1 WHERE google_id = ?').bind(user.sub).run(); } catch(ce) { console.error('Credit refund error:', ce); }
+    }
+    return json({error:e.message||'Server error'}, 500);
+  }
 
 // --- PayPal: Create Order ---
 async function handlePayPalCreateOrder(request, env) {
