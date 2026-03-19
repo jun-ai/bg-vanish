@@ -37,7 +37,7 @@ function b64Encode(str) {
 function b64Decode(b64) {
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
 }
-function json(data, status) { return new Response(JSON.stringify(data), {status, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}}); }
+function json(data, status, origin) { return new Response(JSON.stringify(data), {status, headers:{'Content-Type':'application/json','Access-Control-Allow-Origin': origin || '*'}}); }
 
 async function getSessionUser(request, env) {
   const session = parseCookie(request.headers.get('cookie'));
@@ -363,20 +363,19 @@ export default {
     // Init DB on first request
     initDB(env);
 
-    if (request.method === 'OPTIONS') return new Response(null, {headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
+    if (request.method === 'OPTIONS') return new Response(null, {headers:{'Access-Control-Allow-Origin':url.origin,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
 
     const url = new URL(request.url);
     if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
     if (url.pathname === '/api/auth/me') return handleAuthMe(request, env);
-    if (url.pathname === '/api/auth/debug') { const ck = parseCookie(request.headers.get('cookie')); return json({cookie: ck}); }
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') return handleLogout(request);
     if (url.pathname === '/api/paypal/create-order' && request.method === 'POST') return handlePayPalCreateOrder(request, env);
     if (url.pathname === '/api/paypal/capture-order' && request.method === 'POST') return handlePayPalCaptureOrder(request, env);
     if (url.pathname === '/api/paypal/webhook' && request.method === 'POST') return handlePayPalWebhook(request, env);
     if (url.pathname === '/api/health') return Response.json({status:'ok'});
-    return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
+    return new Response('Not Found', {status:404});
   }
 };
 `;
