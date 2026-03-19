@@ -182,16 +182,16 @@ async function handlePayPalCreateOrder(request, env) {
     }
     // Build approve URL for redirect-based checkout
     const approveLink = data.links?.find(l => l.rel === 'approve');
-    const cancelLink = data.links?.find(l => l.rel === 'cancel');
-    if (approveLink && cancelLink) {
+    if (approveLink) {
       const origin = new URL(request.url).origin;
       const sep = approveLink.href.includes('?') ? '&' : '?';
       const finalUrl = approveLink.href + sep +
         'return_url=' + encodeURIComponent(origin + '/?paypal=success&token=' + data.id) +
         '&cancel_url=' + encodeURIComponent(origin + '/?paypal=cancel');
-      return json({ approveUrl: finalUrl });
+      return json({ approveUrl: finalUrl, orderId: data.id });
     }
-    return json({ orderId: data.id });
+    // Fallback: return order links for debugging
+    return json({ orderId: data.id, links: data.links });
   } catch(e) { return json({error:e.message}, 500); }
 }
 
