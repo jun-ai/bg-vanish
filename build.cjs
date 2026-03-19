@@ -47,7 +47,7 @@ async function getSessionUser(request, env) {
   if (!token) return null;
   try {
     const parts = token.split('.');
-    const payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
+    const payload = JSON.parse(atob(parts[0].replace(/-/g,'+').replace(/_/g,'/')));
     if (payload.t < Date.now()) return null;
     if (parts[1] !== await hmacSign(getCookieSecret(env), JSON.stringify(payload))) return null;
     let credits = 0, plan = 'free';
@@ -100,7 +100,7 @@ async function handleAuthCallback(request, env) {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({s:ud.id, n:ud.name, e:ud.email, t:Date.now()+604800000});
-    const payloadB64 = Buffer.from(sessionData).toString('base64url');
+    const payloadB64 = btoa(sessionData).replace(/\\+/g, '-').replace(/\\\//g, '_').replace(/=+$/, '');
     const sessionToken = payloadB64 + '.' + await hmacSign(getCookieSecret(env), sessionData);
     if (env.DB) {
       try {
