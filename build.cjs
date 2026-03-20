@@ -47,7 +47,7 @@ async function getSessionUser(request, env) {
   if (!token) return null;
   try {
     const parts = token.split('.');
-    const payload = JSON.parse(atob(parts[0].replace(/-/g,'+').replace(/_/g,'/')));
+    const payload = b64Decode(parts[0].replace(/-/g,'+').replace(/_/g,'/'));
     if (payload.t < Date.now()) return null;
     if (parts[1] !== await hmacSign(getCookieSecret(env), JSON.stringify(payload))) return null;
     let credits = 0, plan = 'free';
