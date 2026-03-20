@@ -30,11 +30,11 @@ async function hmacSign(key, message) {
   const msgData = encoder.encode(message);
   const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+  return btoa(Array.from(new Uint8Array(sig), b => String.fromCharCode(b)).join(''));
 }
 function b64Encode(str) {
   const bytes = new TextEncoder().encode(str);
-  return btoa(String.fromCharCode(...bytes));
+  return btoa(Array.from(bytes, b => String.fromCharCode(b)).join(''));
 }
 function b64Decode(b64) {
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))));
@@ -100,7 +100,7 @@ async function handleAuthCallback(request, env) {
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {headers: {Authorization: 'Bearer ' + td.access_token}});
     const ud = await userRes.json();
     const sessionData = JSON.stringify({s:ud.id, n:ud.name, e:ud.email, t:Date.now()+604800000});
-    const payloadB64 = btoa(sessionData).replace(/\\+/g, '-').replace(/\\\//g, '_').replace(/=+$/, '');
+    const payloadB64 = b64Encode(sessionData).replace(/\\+/g, '-').replace(/\\\//g, '_').replace(/=+$/, '');
     const sessionToken = payloadB64 + '.' + await hmacSign(getCookieSecret(env), sessionData);
     if (env.DB) {
       try {
