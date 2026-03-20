@@ -1,6 +1,9 @@
 {
   "name": "bg-vanish",
   "private": true,
+  "scripts": {
+    "build": "node build.cjs"
+  },
   "devDependencies": {
     "wrangler": "3.114.0"
   }
