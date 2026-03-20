@@ -15,7 +15,7 @@ async function hmacSign(key, message) {
   const msgData = encoder.encode(message);
   const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-  return btoa(Array.from(new Uint8Array(sig), b => String.fromCharCode(b)).join(''));
+  return btoa(Array.from(new Uint8Array(sig), b => String.fromCharCode(b)).join('')).replace(/=+$/, '');
 }
 function b64Encode(str) {
   const bytes = new TextEncoder().encode(str);
@@ -313,22 +313,6 @@ export default {
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
     if (url.pathname === '/api/auth/me') return handleAuthMe(request, env);
-    if (url.pathname === '/api/debug-session') {
-      const session = parseCookie(request.headers.get('cookie'));
-      const token = session.session;
-      if (!token) return json({step:'no_cookie', cookie: request.headers.get('cookie')}, 200);
-      try {
-        const parts = token.split('.');
-        let payload;
-        try {
-          payload = b64Decode(parts[0].replace(/-/g,'+').replace(/_/g,'/'));
-        } catch(de) { return json({step:'b64Decode_fail', error: de.message}, 200); }
-        if (payload.t < Date.now()) return json({step:'expired', payload_t: payload.t, now: Date.now()}, 200);
-        const expectedSig = await hmacSign(getCookieSecret(env), JSON.stringify(payload));
-        if (parts[1] !== expectedSig) return json({step:'hmac_mismatch', expected_len: expectedSig.length, actual_len: parts[1]?.length}, 200);
-        return json({step:'ok', payload}, 200);
-      } catch(e) { return json({step:'error', error: e.message}, 200); }
-    }
     if (url.pathname === '/api/auth/logout' && request.method === 'POST') return handleLogout(request);
     if (url.pathname === '/api/paypal/create-order' && request.method === 'POST') return handlePayPalCreateOrder(request, env);
     if (url.pathname === '/api/paypal/capture-order' && request.method === 'POST') return handlePayPalCaptureOrder(request, env);

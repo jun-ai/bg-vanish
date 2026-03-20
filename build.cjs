@@ -30,7 +30,7 @@ async function hmacSign(key, message) {
   const msgData = encoder.encode(message);
   const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-  return btoa(Array.from(new Uint8Array(sig), b => String.fromCharCode(b)).join(''));
+  return btoa(Array.from(new Uint8Array(sig), b => String.fromCharCode(b)).join('')).replace(/=+$/, '');
 }
 function b64Encode(str) {
   const bytes = new TextEncoder().encode(str);
