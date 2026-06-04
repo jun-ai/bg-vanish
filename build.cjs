@@ -328,6 +328,14 @@ export default {
     initDB(env);
     if (request.method === 'OPTIONS') return new Response(null, {headers:{'Access-Control-Allow-Origin':url.origin,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
     const url = new URL(request.url);
+    if (url.pathname === '/robots.txt') {
+      const robotsTxt = 'User-agent: *\\nAllow: /\\nDisallow: /api/\\nSitemap: https://www.imagebackgroundremover.pro/sitemap.xml';
+      return new Response(robotsTxt, {headers:{'Content-Type':'text/plain','Cache-Control':'public, max-age=3600'}});
+    }
+    if (url.pathname === '/sitemap.xml') {
+      const sitemapXml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/</loc>\\n    <changefreq>weekly</changefreq>\\n    <priority>1.0</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/features/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/how-it-works/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n</urlset>';
+      return new Response(sitemapXml, {headers:{'Content-Type':'application/xml','Cache-Control':'public, max-age=3600'}});
+    }
     if (url.pathname === '/og-image.png') {
       const binaryString = atob(OG_IMAGE_BASE64);
       const bytes = new Uint8Array(binaryString.length);
