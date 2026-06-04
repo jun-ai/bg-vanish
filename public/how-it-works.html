@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How It Works — BG Vanish | Remove Image Backgrounds in 3 Steps</title>
+  <meta name="description" content="Learn how BG Vanish removes image backgrounds in 3 simple steps: upload your photo, let AI process it, and download a transparent PNG. No skills needed.">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="How It Works — BG Vanish | Remove Image Backgrounds in 3 Steps">
+  <meta property="og:description" content="Remove image backgrounds in 3 simple steps. Upload, let AI do the work, download a perfect transparent PNG. Try it free.">
+  <meta property="og:image" content="https://www.imagebackgroundremover.pro/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://www.imagebackgroundremover.pro/how-it-works/">
+  <meta property="og:site_name" content="BG Vanish">
+  <meta property="og:locale" content="en_US">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How It Works — BG Vanish">
+  <meta name="twitter:description" content="3 simple steps to remove any image background. Upload, process, download.">
+  <meta name="twitter:image" content="https://www.imagebackgroundremover.pro/og-image.png">
+  <!-- Canonical -->
+  <link rel="canonical" href="https://www.imagebackgroundremover.pro/how-it-works/">
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Remove Image Backgrounds with BG Vanish",
+    "description": "Remove image backgrounds in 3 simple steps using AI technology.",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Upload Your Image",
+        "text": "Drag and drop or click to upload your image. Supports PNG, JPG, and WebP formats up to 10MB."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "AI Removes the Background",
+        "text": "Our AI automatically detects the subject and removes the background in seconds. Works with complex edges, hair, and fur."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Download Transparent PNG",
+        "text": "Preview the result and download your image as a high-quality transparent PNG. Optionally add a custom background color."
+      }
+    ]
+  }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+    .glass-dark { background: rgba(0,0,0,0.2); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+    .step-card { display: flex; gap: 20px; align-items: flex-start; }
+    .step-number { width: 48px; height: 48px; min-width: 48px; border-radius: 50%; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #fde68a; }
+    .step-content { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 24px; flex: 1; }
+    .faq-item { border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; }
+    .faq-q { padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; transition: background 0.2s; }
+    .faq-q:hover { background: rgba(255,255,255,0.05); }
+    .faq-a { padding: 0 20px; max-height: 0; overflow: hidden; transition: all 0.3s; color: rgba(255,255,255,0.7); font-size: 14px; }
+    .faq-item.open .faq-a { padding: 0 20px 16px; max-height: 200px; }
+    .faq-item.open .faq-chevron { transform: rotate(180deg); }
+    .faq-chevron { transition: transform 0.3s; }
+    .cta-btn { display:inline-block; padding: 12px 28px; border-radius: 12px; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; text-decoration: none; }
+    .cta-primary { background: white; color: #667eea; }
+    .cta-primary:hover { background: #fef3c7; transform: translateY(-1px); }
+    .nav-link { color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; transition: color 0.2s; cursor: pointer; text-decoration: none; }
+    .nav-link:hover { color: white; }
+    .nav-link.active { color: white; }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+
+  <!-- Header -->
+  <header class="py-4 px-4">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2 text-white no-underline">
+        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl">✨</div>
+        <span class="text-xl font-bold">BG Vanish</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="/" class="nav-link">Home</a>
+        <a href="/features/" class="nav-link">Features</a>
+        <a href="/how-it-works/" class="nav-link active">How It Works</a>
+      </nav>
+      <a href="/" class="cta-btn cta-primary text-sm">Get Started Free</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <main class="max-w-5xl mx-auto px-4 pb-20">
+    <section class="text-center py-12">
+      <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+        Remove Backgrounds in <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">3 Simple Steps</span>
+      </h1>
+      <p class="text-lg text-white/70 max-w-2xl mx-auto">
+        No software to install, no design skills needed. Just upload your image and let AI do the rest.
+      </p>
+    </section>
+
+    <!-- Steps -->
+    <section class="max-w-2xl mx-auto mb-16 space-y-6">
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3 class="text-lg font-bold mb-2">Upload Your Image</h3>
+          <p class="text-white/60 text-sm leading-relaxed">Drag and drop your image onto the upload area, or click to browse your files. We support <strong class="text-white/80">PNG</strong>, <strong class="text-white/80">JPG</strong>, and <strong class="text-white/80">WebP</strong> formats up to 10MB per image. No account required to upload.</p>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3 class="text-lg font-bold mb-2">AI Removes the Background</h3>
+          <p class="text-white/60 text-sm leading-relaxed">Our advanced AI model automatically detects the main subject in your image and removes the background with precision. It handles complex edges, fine details like hair and fur, and multiple subjects. Most images are processed in <strong class="text-white/80">under 5 seconds</strong>.</p>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3 class="text-lg font-bold mb-2">Download Your Result</h3>
+          <p class="text-white/60 text-sm leading-relaxed">Preview the result right in your browser. You can zoom in to check details, compare with the original, and optionally add a custom background color. Download as a high-quality <strong class="text-white/80">transparent PNG</strong> — perfect for e-commerce, design projects, or social media.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="max-w-2xl mx-auto mb-16">
+      <h2 class="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+      <div class="space-y-3">
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What image formats are supported?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">You can upload PNG, JPG, and WebP images. Maximum file size is 10MB per image. Results are always delivered as high-quality transparent PNG files.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How long does processing take?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Most images are processed in 3–5 seconds. Larger or more complex images may take slightly longer, but you'll typically have your result almost instantly.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is my image data private?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Yes. Your images are processed server-side and never stored. We do not keep copies, share them with third parties, or use them for AI training.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How many free credits do I get?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">New users receive 3 free credits upon signing up with a Google account. Each credit lets you process one image. After that, you can purchase credit packs starting at $4.99 for 40 credits.</div>
+        </div>
+        <div class="faq-item glass-dark">
+          <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I process multiple images at once?<span class="faq-chevron text-white/40">▼</span></div>
+          <div class="faq-a">Yes! With the Pro plan, you can upload and process up to 5 images simultaneously. Each image in the batch consumes one credit.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="text-center">
+      <div class="glass rounded-2xl p-10 max-w-2xl mx-auto">
+        <h2 class="text-2xl font-bold mb-3">Ready to Remove Your First Background?</h2>
+        <p class="text-white/60 mb-6">Sign up in seconds with Google and get 3 free credits.</p>
+        <a href="/" class="cta-btn cta-primary text-lg px-10 py-3">Try It Free</a>
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>
