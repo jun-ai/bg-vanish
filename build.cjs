@@ -7,6 +7,9 @@ const howItWorksHtml = fs.readFileSync(path.join(__dirname, 'public/how-it-works
 const blog1Html = fs.readFileSync(path.join(__dirname, 'public/blog/how-to-remove-background-from-image-free.html'), 'utf8');
 const blog2Html = fs.readFileSync(path.join(__dirname, 'public/blog/best-ai-background-remover-2026.html'), 'utf8');
 const blog3Html = fs.readFileSync(path.join(__dirname, 'public/blog/remove-background-from-product-photo.html'), 'utf8');
+const blog4Html = fs.readFileSync(path.join(__dirname, 'public/blog/remove-bg-alternatives-2026.html'), 'utf8');
+const blog5Html = fs.readFileSync(path.join(__dirname, 'public/blog/bg-vanish-vs-remove-bg.html'), 'utf8');
+const blog6Html = fs.readFileSync(path.join(__dirname, 'public/blog/remove-background-product-photos-ecommerce.html'), 'utf8');
 const ogImageBuffer = fs.readFileSync(path.join(__dirname, 'public/og-image.png'));
 const ogImageBase64 = ogImageBuffer.toString('base64');
 
@@ -23,6 +26,9 @@ const howItWorksJson = JSON.stringify(howItWorksHtml).replace(/`/g, '\\`').repla
 const blog1Json = JSON.stringify(blog1Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 const blog2Json = JSON.stringify(blog2Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 const blog3Json = JSON.stringify(blog3Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+const blog4Json = JSON.stringify(blog4Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+const blog5Json = JSON.stringify(blog5Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+const blog6Json = JSON.stringify(blog6Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 const plansJson = JSON.stringify(PLANS);
 const ogImageJson = JSON.stringify(ogImageBase64);
 
@@ -32,6 +38,9 @@ const HOW_IT_WORKS_HTML = ${howItWorksJson};
 const BLOG_HOW_TO_REMOVE_BG = ${blog1Json};
 const BLOG_BEST_AI_REMOVER = ${blog2Json};
 const BLOG_PRODUCT_PHOTO = ${blog3Json};
+const BLOG_REMOVE_BG_ALTERNATIVES = ${blog4Json};
+const BLOG_VS_REMOVE_BG = ${blog5Json};
+const BLOG_ECOMMERCE = ${blog6Json};
 const PLANS = ${plansJson};
 const OG_IMAGE_BASE64 = ${ogImageJson};
 
@@ -348,7 +357,7 @@ export default {
       return new Response(robotsTxt, {headers:{'Content-Type':'text/plain','Cache-Control':'public, max-age=3600'}});
     }
     if (url.pathname === '/sitemap.xml') {
-      const sitemapXml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/</loc>\\n    <changefreq>weekly</changefreq>\\n    <priority>1.0</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/features/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/how-it-works/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/pricing/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/faq/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.6</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/how-to-remove-background-from-image-free/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/best-ai-background-remover-2026/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/remove-background-from-product-photo/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n</urlset>';
+      const sitemapXml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/</loc>\\n    <changefreq>weekly</changefreq>\\n    <priority>1.0</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/features/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/how-it-works/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/pricing/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.8</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/faq/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.6</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/how-to-remove-background-from-image-free/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/best-ai-background-remover-2026/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/remove-background-from-product-photo/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/remove-bg-alternatives-2026/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/bg-vanish-vs-remove-bg/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n  <url>\\n    <loc>https://www.imagebackgroundremover.pro/blog/remove-background-product-photos-ecommerce/</loc>\\n    <changefreq>monthly</changefreq>\\n    <priority>0.7</priority>\\n  </url>\\n</urlset>';
       return new Response(sitemapXml, {headers:{'Content-Type':'application/xml','Cache-Control':'public, max-age=3600'}});
     }
     if (url.pathname === '/og-image.png') {
@@ -372,6 +381,9 @@ export default {
     if (url.pathname === '/blog/how-to-remove-background-from-image-free/' || url.pathname === '/blog/how-to-remove-background-from-image-free') return new Response(BLOG_HOW_TO_REMOVE_BG, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
     if (url.pathname === '/blog/best-ai-background-remover-2026/' || url.pathname === '/blog/best-ai-background-remover-2026') return new Response(BLOG_BEST_AI_REMOVER, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
     if (url.pathname === '/blog/remove-background-from-product-photo/' || url.pathname === '/blog/remove-background-from-product-photo') return new Response(BLOG_PRODUCT_PHOTO, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
+    if (url.pathname === '/blog/remove-bg-alternatives-2026/' || url.pathname === '/blog/remove-bg-alternatives-2026') return new Response(BLOG_REMOVE_BG_ALTERNATIVES, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
+    if (url.pathname === '/blog/bg-vanish-vs-remove-bg/' || url.pathname === '/blog/bg-vanish-vs-remove-bg') return new Response(BLOG_VS_REMOVE_BG, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
+    if (url.pathname === '/blog/remove-background-product-photos-ecommerce/' || url.pathname === '/blog/remove-background-product-photos-ecommerce') return new Response(BLOG_ECOMMERCE, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
     return new Response('Not Found', {status:404});
   }
 };

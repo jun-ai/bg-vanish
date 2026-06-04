@@ -23,6 +23,17 @@
   <meta name="twitter:creator" content="@bgvanish">
   <!-- Canonical -->
   <link rel="canonical" href="https://www.imagebackgroundremover.pro/">
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-M7B9PWV41C"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-M7B9PWV41C');
+  </script>
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23667EEA'/><stop offset='100%25' stop-color='%23764BA2'/></linearGradient></defs><circle cx='50' cy='50' r='48' fill='url(%23g)'/><text x='50' y='68' text-anchor='middle' font-family='Arial,sans-serif' font-weight='800' font-size='42' fill='white'>BG</text></svg>">
   <!-- Structured Data -->
   <script type="application/ld+json">
   {
@@ -118,9 +129,10 @@
         <span class="text-xl font-bold">BG Vanish</span>
       </a>
       <nav class="hidden md:flex items-center gap-6">
-        <span class="nav-link" onclick="navigate('home')">Home</span>
-        <span class="nav-link" onclick="navigate('pricing')">Pricing</span>
-        <span class="nav-link" onclick="navigate('faq')">FAQ</span>
+        <a href="/" class="nav-link" onclick="navigate('home');return false">Home</a>
+        <a href="/pricing/" class="nav-link" onclick="navigate('pricing');return false">Pricing</a>
+        <a href="/faq/" class="nav-link" onclick="navigate('faq');return false">FAQ</a>
+        <a href="/blog/how-to-remove-background-from-image-free/" class="nav-link">Blog</a>
       </nav>
       <div class="flex items-center gap-3">
         <div id="creditBadge" class="credit-badge hidden">🪙 <span id="creditCount">0</span></div>
@@ -129,9 +141,10 @@
       </div>
     </div>
     <div id="mobileMenu" class="hidden md:hidden mt-4 flex flex-col gap-2 text-center">
-      <span class="nav-link py-2" onclick="navigate('home');document.getElementById('mobileMenu').classList.add('hidden')">Home</span>
-      <span class="nav-link py-2" onclick="navigate('pricing');document.getElementById('mobileMenu').classList.add('hidden')">Pricing</span>
-      <span class="nav-link py-2" onclick="navigate('faq');document.getElementById('mobileMenu').classList.add('hidden')">FAQ</span>
+      <a href="/" class="nav-link py-2" onclick="navigate('home');document.getElementById('mobileMenu').classList.add('hidden');return false">Home</a>
+      <a href="/pricing/" class="nav-link py-2" onclick="navigate('pricing');document.getElementById('mobileMenu').classList.add('hidden');return false">Pricing</a>
+      <a href="/faq/" class="nav-link py-2" onclick="navigate('faq');document.getElementById('mobileMenu').classList.add('hidden');return false">FAQ</a>
+      <a href="/blog/how-to-remove-background-from-image-free/" class="nav-link py-2" onclick="document.getElementById('mobileMenu').classList.add('hidden')">Blog</a>
     </div>
   </header>
 
@@ -383,6 +396,20 @@
         </div>
       </div>
     </main>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {"@type": "Question", "name": "What is BG Vanish?", "acceptedAnswer": {"@type": "Answer", "text": "BG Vanish is an AI-powered tool that removes backgrounds from images instantly. Upload any photo and get a clean transparent cutout in seconds."}},
+        {"@type": "Question", "name": "How many free credits do I get?", "acceptedAnswer": {"@type": "Answer", "text": "New users get 3 free credits upon sign-up. No credit card required. You can purchase more credits or subscribe to a monthly plan anytime."}},
+        {"@type": "Question", "name": "How accurate is the background removal?", "acceptedAnswer": {"@type": "Answer", "text": "Our AI handles most images with high accuracy, including complex edges like hair, fur, and transparent objects. Results are usually excellent for product photos, portraits, and logos."}},
+        {"@type": "Question", "name": "Can I use the images commercially?", "acceptedAnswer": {"@type": "Answer", "text": "Yes! You own the rights to your images. The background-removed output is yours to use for any purpose, commercial or personal."}},
+        {"@type": "Question", "name": "What's the maximum image size?", "acceptedAnswer": {"@type": "Answer", "text": "Maximum file size is 10MB. Supported formats: PNG, JPG, WebP."}},
+        {"@type": "Question", "name": "How do I contact support?", "acceptedAnswer": {"@type": "Answer", "text": "Email us at support@imagebackgroundremover.pro and we'll get back to you within 24 hours."}}
+      ]
+    }
+    </script>
   </div>
 
   <!-- Footer -->
@@ -390,10 +417,11 @@
     <div class="max-w-5xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
       <p>BG Vanish · Powered by AI · No data stored</p>
       <div class="flex gap-4">
-        <span class="nav-link text-xs" onclick="navigate('pricing')">Pricing</span>
-        <span class="nav-link text-xs" onclick="navigate('faq')">FAQ</span>
         <a href="/features/" class="nav-link text-xs">Features</a>
         <a href="/how-it-works/" class="nav-link text-xs">How It Works</a>
+        <a href="/pricing/" class="nav-link text-xs" onclick="navigate('pricing');return false">Pricing</a>
+        <a href="/faq/" class="nav-link text-xs" onclick="navigate('faq');return false">FAQ</a>
+        <a href="/blog/how-to-remove-background-from-image-free/" class="nav-link text-xs">Blog</a>
       </div>
     </div>
   </footer>
