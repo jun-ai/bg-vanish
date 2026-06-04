@@ -38,19 +38,13 @@
       "price": "0",
       "priceCurrency": "USD",
       "description": "3 free credits on signup"
-    },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.8",
-      "bestRating": "5",
-      "ratingCount": "156"
     }
   }
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
     .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
     .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
     .glass-dark { background: rgba(0,0,0,0.2); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
@@ -152,6 +146,7 @@
         <p class="text-lg text-white/70 max-w-xl mx-auto">
           Drop your image, get a clean cutout. Sign up and get 3 free credits. Powered by AI.
         </p>
+        <h2 class="text-lg text-white/50 font-medium mt-3">Fast, free AI background removal — no software required</h2>
       </section>
 
       <!-- Login Required Banner -->
@@ -397,6 +392,8 @@
       <div class="flex gap-4">
         <span class="nav-link text-xs" onclick="navigate('pricing')">Pricing</span>
         <span class="nav-link text-xs" onclick="navigate('faq')">FAQ</span>
+        <a href="/features/" class="nav-link text-xs">Features</a>
+        <a href="/how-it-works/" class="nav-link text-xs">How It Works</a>
       </div>
     </div>
   </footer>
@@ -444,7 +441,7 @@
         <div class="flex items-center gap-2" style="position:relative">
           <div class="credit-badge">🪙 <span id="headerCredits">${state.credits}</span></div>
           <div id="userAvatar" class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">
-            <img src="${currentUser.picture}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.style.display='none';this.parentElement.textContent='${(currentUser.name||'U')[0]}'">
+            <img src="${currentUser.picture}" alt="User avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.style.display='none';this.parentElement.textContent='${(currentUser.name||'U')[0]}'">
           </div>
           <div id="userMenu" class="user-menu hidden">
             <div style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:4px">
@@ -551,7 +548,7 @@
       qs.classList.remove('hidden');
       qe.innerHTML = state.queue.map(item => `
         <div class="thumb flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden relative" data-id="${item.id}">
-          <img src="${item.originalUrl}" class="w-full h-full object-cover">
+          <img src="${item.originalUrl}" alt="Uploaded image thumbnail" class="w-full h-full object-cover">
           ${item.status === 'processing' ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center"><div class="spinner" style="width:24px;height:24px;border-width:2px"></div></div>' : ''}
           ${item.status === 'done' ? '<div class="absolute bottom-0 inset-x-0 bg-green-500 text-center text-xs py-0.5">✓</div>' : ''}
           ${item.status === 'error' ? '<div class="absolute bottom-0 inset-x-0 bg-red-500 text-center text-xs py-0.5">✗</div>' : ''}
@@ -598,12 +595,12 @@
           <div class="flex flex-col md:flex-row gap-6">
             <div class="flex-1 text-center">
               <p class="text-xs text-white/50 mb-2 uppercase tracking-wide">Original</p>
-              <div class="zoom-container rounded-xl overflow-hidden bg-black/20" style="height:240px"><div class="zoom-overlay w-full h-full flex items-center justify-center"><img src="${item.originalUrl}" class="max-h-full object-contain" style="transition:transform 0.2s"></div><span class="zoom-hint">Click to zoom</span></div>
+              <div class="zoom-container rounded-xl overflow-hidden bg-black/20" style="height:240px"><div class="zoom-overlay w-full h-full flex items-center justify-center"><img src="${item.originalUrl}" alt="Original image before background removal" class="max-h-full object-contain" style="transition:transform 0.2s"></div><span class="zoom-hint">Click to zoom</span></div>
             </div>
             <div class="flex items-center text-2xl">→</div>
             <div class="flex-1 text-center">
               <p class="text-xs text-white/50 mb-2 uppercase tracking-wide">Result</p>
-              <div id="result-${item.id}" class="zoom-container checker-bg rounded-xl overflow-hidden" style="height:240px"><div class="zoom-overlay w-full h-full flex items-center justify-center"><img src="${item.resultUrl}" class="max-h-full object-contain" style="transition:transform 0.2s"></div><span class="zoom-hint">Click to zoom</span></div>
+              <div id="result-${item.id}" class="zoom-container checker-bg rounded-xl overflow-hidden" style="height:240px"><div class="zoom-overlay w-full h-full flex items-center justify-center"><img src="${item.resultUrl}" alt="Result after background removal" class="max-h-full object-contain" style="transition:transform 0.2s"></div><span class="zoom-hint">Click to zoom</span></div>
             </div>
           </div>
           <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
