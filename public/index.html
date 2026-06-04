@@ -52,6 +52,13 @@
     }
   }
   </script>
+  <!-- Preconnect for faster external resource loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://accounts.google.com">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -117,6 +124,21 @@
     .cta-secondary:hover { background: rgba(255,255,255,0.25); }
     .page { display: none; }
     .page.active { display: block; }
+    /* Demo section */
+    .demo-section { background: rgba(0,0,0,0.15); border-radius: 20px; overflow: hidden; }
+    .demo-tab { padding: 10px 24px; border-radius: 10px 10px 0 0; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; }
+    .demo-tab.active { background: rgba(255,255,255,0.12); color: white; }
+    .demo-tab:not(.active) { color: rgba(255,255,255,0.5); background: transparent; }
+    .demo-tab:not(.active):hover { color: rgba(255,255,255,0.8); }
+    .compare-container { position: relative; overflow: hidden; border-radius: 12px; }
+    .compare-after { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+    /* Feature highlights */
+    .feature-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 20px; font-size: 13px; font-weight: 500; }
+    .trust-stat { text-align: center; padding: 16px; }
+    .trust-stat .num { font-size: 28px; font-weight: 800; color: #fde68a; }
+    .trust-stat .label { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    /* Light section break */
+    .section-light { background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-white">
@@ -160,6 +182,100 @@
           Drop your image, get a clean cutout. Sign up and get 3 free credits. Powered by AI.
         </p>
         <h2 class="text-lg text-white/50 font-medium mt-3">Fast, free AI background removal — no software required</h2>
+      </section>
+
+      <!-- Before/After Demo -->
+      <section class="mb-10 section-light py-10 -mx-4 px-4">
+        <div class="max-w-4xl mx-auto">
+          <div class="text-center mb-8">
+            <h2 class="text-2xl md:text-3xl font-bold mb-3">See the Magic in Action</h2>
+            <p class="text-white/60 max-w-lg mx-auto">Our AI handles complex edges, hair, fur, and transparent objects — with results you can download instantly.</p>
+          </div>
+          <div class="grid md:grid-cols-3 gap-4" id="demoGrid">
+            <div class="demo-section">
+              <div class="flex">
+                <button class="demo-tab active" onclick="switchDemo(0,'before')">Original</button>
+                <button class="demo-tab" onclick="switchDemo(0,'after')">Result</button>
+              </div>
+              <div class="compare-container">
+                <img src="/img/demo-before-1.jpg" alt="Product photo with background - before removing background with BG Vanish" class="demo-img w-full" style="display:block" id="demo-0-before">
+                <img src="/img/demo-after-1.png" alt="Product photo after background removal - transparent PNG result" class="demo-img w-full" style="display:none" id="demo-0-after">
+              </div>
+            </div>
+            <div class="demo-section">
+              <div class="flex">
+                <button class="demo-tab active" onclick="switchDemo(1,'before')">Original</button>
+                <button class="demo-tab" onclick="switchDemo(1,'after')">Result</button>
+              </div>
+              <div class="compare-container">
+                <img src="/img/demo-before-2.jpg" alt="Portrait photo with outdoor background - before AI background removal" class="demo-img w-full" style="display:block" id="demo-1-before">
+                <img src="/img/demo-after-2.png" alt="Portrait photo after AI background removal - isolated subject on transparent background" class="demo-img w-full" style="display:none" id="demo-1-after">
+              </div>
+            </div>
+            <div class="demo-section">
+              <div class="flex">
+                <button class="demo-tab active" onclick="switchDemo(2,'before')">Original</button>
+                <button class="demo-tab" onclick="switchDemo(2,'after')">Result</button>
+              </div>
+              <div class="compare-container">
+                <img src="/img/demo-before-3.jpg" alt="Product photo on table surface - before removing background with AI tool" class="demo-img w-full" style="display:block" id="demo-2-before">
+                <img src="/img/demo-after-3.png" alt="Product photo after background removal - clean transparent PNG download" class="demo-img w-full" style="display:none" id="demo-2-after">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feature Highlights -->
+      <section class="mb-10">
+        <h2 class="text-center text-2xl md:text-3xl font-bold mb-2">Why Choose BG Vanish</h2>
+        <p class="text-center text-white/50 mb-8 text-sm">Professional results without the professional price tag</p>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 transition">
+            <div class="text-3xl mb-3">🤖</div>
+            <h3 class="font-bold mb-1">AI Precision</h3>
+            <p class="text-white/50 text-xs leading-relaxed">Deep learning models handle hair, fur, and complex edges automatically</p>
+          </div>
+          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 transition">
+            <div class="text-3xl mb-3">⚡</div>
+            <h3 class="font-bold mb-1">3-5 Seconds</h3>
+            <p class="text-white/50 text-xs leading-relaxed">Most images processed in under 5 seconds — no waiting, no queues</p>
+          </div>
+          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 transition">
+            <div class="text-3xl mb-3">🔒</div>
+            <h3 class="font-bold mb-1">Privacy First</h3>
+            <p class="text-white/50 text-xs leading-relaxed">Images processed and deleted instantly — never stored or shared</p>
+          </div>
+          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 transition">
+            <div class="text-3xl mb-3">🎨</div>
+            <h3 class="font-bold mb-1">Custom Backgrounds</h3>
+            <p class="text-white/50 text-xs leading-relaxed">Replace background with any color — perfect for product listings</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap justify-center gap-2 mt-6">
+          <span class="feature-badge">✓ PNG, JPG, WebP</span>
+          <span class="feature-badge">✓ Up to 10MB</span>
+          <span class="feature-badge">✓ Batch Upload</span>
+          <span class="feature-badge">✓ Transparent Output</span>
+        </div>
+      </section>
+
+      <!-- Trust Bar -->
+      <section class="mb-10 section-light py-6 -mx-4 px-4">
+        <div class="max-w-3xl mx-auto grid grid-cols-3 divide-x divide-white/10">
+          <div class="trust-stat">
+            <div class="num">3-Free</div>
+            <div class="label">Credits on Sign Up</div>
+          </div>
+          <div class="trust-stat">
+            <div class="num"><5s</div>
+            <div class="label">Average Processing</div>
+          </div>
+          <div class="trust-stat">
+            <div class="num">0-Data</div>
+            <div class="label">Images Stored</div>
+          </div>
+        </div>
       </section>
 
       <!-- Login Required Banner -->
@@ -440,6 +556,25 @@
       document.getElementById('page-' + page)?.classList.add('active');
       document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
       window.scrollTo(0, 0);
+    }
+
+    // --- Demo Tabs ---
+    function switchDemo(idx, mode) {
+      const container = document.getElementById('demoGrid').children[idx];
+      const beforeImg = document.getElementById('demo-' + idx + '-before');
+      const afterImg = document.getElementById('demo-' + idx + '-after');
+      const tabs = container.querySelectorAll('.demo-tab');
+      if (mode === 'before') {
+        beforeImg.style.display = 'block';
+        afterImg.style.display = 'none';
+        tabs[0].classList.add('active');
+        tabs[1].classList.remove('active');
+      } else {
+        beforeImg.style.display = 'none';
+        afterImg.style.display = 'block';
+        tabs[0].classList.remove('active');
+        tabs[1].classList.add('active');
+      }
     }
 
     // --- Pricing Tab ---

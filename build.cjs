@@ -12,6 +12,13 @@ const blog5Html = fs.readFileSync(path.join(__dirname, 'public/blog/bg-vanish-vs
 const blog6Html = fs.readFileSync(path.join(__dirname, 'public/blog/remove-background-product-photos-ecommerce.html'), 'utf8');
 const ogImageBuffer = fs.readFileSync(path.join(__dirname, 'public/og-image.png'));
 const ogImageBase64 = ogImageBuffer.toString('base64');
+// Demo images
+const demoB1 = fs.readFileSync(path.join(__dirname, 'public/img/demo-before-1.jpg')).toString('base64');
+const demoA1 = fs.readFileSync(path.join(__dirname, 'public/img/demo-after-1.png')).toString('base64');
+const demoB2 = fs.readFileSync(path.join(__dirname, 'public/img/demo-before-2.jpg')).toString('base64');
+const demoA2 = fs.readFileSync(path.join(__dirname, 'public/img/demo-after-2.png')).toString('base64');
+const demoB3 = fs.readFileSync(path.join(__dirname, 'public/img/demo-before-3.jpg')).toString('base64');
+const demoA3 = fs.readFileSync(path.join(__dirname, 'public/img/demo-after-3.png')).toString('base64');
 
 const PLANS = {
   starter: { amount: '4.99', credits: 40 },
@@ -31,6 +38,12 @@ const blog5Json = JSON.stringify(blog5Html).replace(/`/g, '\\`').replace(/\$\{/g
 const blog6Json = JSON.stringify(blog6Html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 const plansJson = JSON.stringify(PLANS);
 const ogImageJson = JSON.stringify(ogImageBase64);
+const demoB1Json = JSON.stringify(demoB1);
+const demoA1Json = JSON.stringify(demoA1);
+const demoB2Json = JSON.stringify(demoB2);
+const demoA2Json = JSON.stringify(demoA2);
+const demoB3Json = JSON.stringify(demoB3);
+const demoA3Json = JSON.stringify(demoA3);
 
 const workerJs = `const HTML = ${htmlJson};
 const FEATURES_HTML = ${featuresJson};
@@ -43,6 +56,12 @@ const BLOG_VS_REMOVE_BG = ${blog5Json};
 const BLOG_ECOMMERCE = ${blog6Json};
 const PLANS = ${plansJson};
 const OG_IMAGE_BASE64 = ${ogImageJson};
+const DEMO_B1 = ${demoB1Json};
+const DEMO_A1 = ${demoA1Json};
+const DEMO_B2 = ${demoB2Json};
+const DEMO_A2 = ${demoA2Json};
+const DEMO_B3 = ${demoB3Json};
+const DEMO_A3 = ${demoA3Json};
 
 function getCookieSecret(env) { return env.COOKIE_SECRET || 'bg-vanish-session-2026'; }
 
@@ -366,10 +385,17 @@ export default {
       for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
       return new Response(bytes, {headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'}});
     }
-    if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
+    // Demo images
+    if (url.pathname === '/img/demo-before-1.jpg') { const b = atob(DEMO_B1); const arr = new Uint8Array(b.length); for(let i=0;i<b.length;i++) arr[i]=b.charCodeAt(i); return new Response(arr, {headers:{'Content-Type':'image/jpeg','Cache-Control':'public, max-age=86400'}}); }
+    if (url.pathname === '/img/demo-after-1.png') { const b = atob(DEMO_A1); const arr = new Uint8Array(b.length); for(let i=0;i<b.length;i++) arr[i]=b.charCodeAt(i); return new Response(arr, {headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'}}); }
+    if (url.pathname === '/img/demo-before-2.jpg') { const b = atob(DEMO_B2); const arr = new Uint8Array(b.length); for(let i=0;i<b.length;i++) arr[i]=b.charCodeAt(i); return new Response(arr, {headers:{'Content-Type':'image/jpeg','Cache-Control':'public, max-age=86400'}}); }
+    if (url.pathname === '/img/demo-after-2.png') { const b = atob(DEMO_A2); const arr = new Uint8Array(b.length); for(let i=0;i<b.length;i++) arr[i]=b.charCodeAt(i); return new Response(arr, {headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'}}); }
+    if (url.pathname === '/img/demo-before-3.jpg') { const b = atob(DEMO_B3); const arr = new Uint8Array(b.length); for(let i=0;i<b.length;i++) arr[i]=b.charCodeAt(i); return new Response(arr, {headers:{'Content-Type':'image/jpeg','Cache-Control':'public, max-age=86400'}}); }
+    if (url.pathname === '/img/demo-after-3.png') { const b = atob(DEMO_A3); const arr = new Uint8Array(b.length); for(let i=0;i<b.length;i++) arr[i]=b.charCodeAt(i); return new Response(arr, {headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'}}); }
+    if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
     if (url.pathname === '/features/' || url.pathname === '/features') return new Response(FEATURES_HTML, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
     if (url.pathname === '/how-it-works/' || url.pathname === '/how-it-works') return new Response(HOW_IT_WORKS_HTML, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
-    if (url.pathname === '/pricing' || url.pathname === '/pricing/' || url.pathname === '/faq' || url.pathname === '/faq/') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
+    if (url.pathname === '/pricing' || url.pathname === '/pricing/' || url.pathname === '/faq' || url.pathname === '/faq/') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8','Cache-Control':'public, max-age=3600'}});
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
     if (url.pathname === '/api/auth/me') return handleAuthMe(request, env);
