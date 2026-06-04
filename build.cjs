@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8');
+const ogImageBuffer = fs.readFileSync(path.join(__dirname, 'public/og-image.png'));
+const ogImageBase64 = ogImageBuffer.toString('base64');
 
 const PLANS = {
   starter: { amount: '4.99', credits: 40 },
@@ -12,9 +14,11 @@ const PLANS = {
 // Escape backticks so template literal doesn't break
 const htmlJson = JSON.stringify(html).replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 const plansJson = JSON.stringify(PLANS);
+const ogImageJson = JSON.stringify(ogImageBase64);
 
 const workerJs = `const HTML = ${htmlJson};
 const PLANS = ${plansJson};
+const OG_IMAGE_BASE64 = ${ogImageJson};
 
 function getCookieSecret(env) { return env.COOKIE_SECRET || 'bg-vanish-session-2026'; }
 
@@ -324,6 +328,12 @@ export default {
     initDB(env);
     if (request.method === 'OPTIONS') return new Response(null, {headers:{'Access-Control-Allow-Origin':url.origin,'Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'Content-Type'}});
     const url = new URL(request.url);
+    if (url.pathname === '/og-image.png') {
+      const binaryString = atob(OG_IMAGE_BASE64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+      return new Response(bytes, {headers:{'Content-Type':'image/png','Cache-Control':'public, max-age=86400'}});
+    }
     if (url.pathname === '/' || url.pathname === '/index.html') return new Response(HTML, {headers:{'Content-Type':'text/html;charset=utf-8'}});
     if (url.pathname === '/api/remove-bg' && request.method === 'POST') return handleRemoveBg(request, env);
     if (url.pathname === '/api/auth/callback') return handleAuthCallback(request, env);
