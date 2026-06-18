@@ -63,10 +63,44 @@
   <meta name="msvalidate.01" content="ba1749d71fbc1c0df8b0735171ec5278" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap');
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; }
+    /* 字体混排:Playfair Display (衬线) for 标题, Inter for body —— 经典高对比组合 */
+    h1, h2, .font-display { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; letter-spacing: -0.02em; font-weight: 800; }
     .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
     .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+    /* Feature cards 改造:去边框,用间距 + hover 渐变光晕区分 */
+    .feature-card {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.5), rgba(250, 204, 21, 0.3));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    .feature-card:hover {
+      transform: translateY(-6px) scale(1.02);
+      background: rgba(255,255,255,0.12);
+      box-shadow: 0 25px 50px -12px rgba(102, 126, 234, 0.3), 0 0 30px rgba(250, 204, 21, 0.15);
+    }
+    .feature-card:hover::before {
+      opacity: 1;
+    }
     .glass-dark { background: rgba(0,0,0,0.2); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
     .drop-zone { border: 2px dashed rgba(255,255,255,0.4); transition: all 0.3s ease; }
     .drop-zone:hover, .drop-zone.drag-over { border-color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.15); transform: scale(1.01); }
@@ -112,6 +146,48 @@
       border-color: rgba(250,204,21,1);
       box-shadow: 0 0 60px rgba(250,204,21,0.28), 0 25px 50px -10px rgba(0,0,0,0.4);
       transform: translateY(-4px) scale(1.04);
+    }
+    /* P0-1: Popular 价格层级强化 —— 48px 黄色 + 小$符号 */
+    .pricing-card.popular .price-display {
+      /* P0-1:Popular 价格层级强化 —— 48px 黄色 + 小$符号 */
+      font-size: 3rem; /* text-5xl */
+      line-height: 1;
+      font-weight: 900;
+      color: #fde68a; /* yellow-200 */
+      letter-spacing: -0.03em;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 2px;
+    }
+    .pricing-card.popular .price-display .currency {
+      font-size: 1.25rem; /* $ 缩小 */
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 700;
+    }
+    .pricing-card.popular .price-display .cents {
+      font-size: 1.5rem; /* .99 略小 */
+      color: #fef3c7; /* yellow-100 */
+      font-weight: 700;
+    }
+    .pricing-card.popular .credits-display {
+      /* credits 数字也强化 */
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.02em;
+    }
+    .pricing-card .price-display {
+      /* 普通卡片价格保持原状(对比基线) */
+      font-size: 2.25rem; /* text-4xl */
+      line-height: 1;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.02em;
+    }
+    .pricing-card .credits-display {
+      font-size: 1.875rem; /* text-3xl */
+      font-weight: 700;
+      color: #fde68a;
     }
     .tab-btn { padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
     .tab-btn.active { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
@@ -183,22 +259,50 @@
   <!-- HOME PAGE -->
   <div id="page-home" class="page active">
     <main class="max-w-5xl mx-auto px-4 pb-20">
-      <section class="text-center py-12 sm:py-16">
-        <h1 class="text-4xl md:text-6xl font-extrabold mb-5 leading-tight">
-          Remove Any Background<br>
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">In Seconds</span>
-        </h1>
-        <p class="text-lg sm:text-xl text-white/80 max-w-xl mx-auto leading-relaxed">
-          Drop your image. Get a clean transparent PNG.<br class="hidden sm:block">
-          <span class="text-yellow-200 font-semibold">3 free credits</span>, no credit card required.
-        </p>
-        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-          <button onclick="loginWithGoogle()" class="cta-btn cta-primary text-base sm:text-lg px-7 sm:px-8 py-3.5 shadow-2xl inline-flex items-center gap-2.5 group">
-            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            Try BG Vanish Free
-            <span class="inline-block transition-transform group-hover:translate-x-0.5">&rarr;</span>
-          </button>
-          <span class="text-xs sm:text-sm text-white/50">or scroll for the demo &darr;</span>
+      <!-- Hero Bento 布局:左文 + 右产品演示图 -->
+      <section class="py-12 sm:py-16">
+        <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          <!-- 左侧:文字 + CTA -->
+          <div class="text-center md:text-left">
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-5 leading-tight">
+              Remove Any Background<br>
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-pink-200">In Seconds</span>
+            </h1>
+            <p class="text-lg sm:text-xl text-white/80 max-w-xl md:max-w-none mx-auto md:mx-0 leading-relaxed">
+              Drop your image. Get a clean transparent PNG.<br class="hidden sm:block">
+              <span class="text-yellow-200 font-semibold">3 free credits</span>, no credit card required.
+            </p>
+            <div class="mt-8 flex flex-col sm:flex-row md:justify-start items-center justify-center gap-3 sm:gap-4">
+              <button onclick="loginWithGoogle()" class="cta-btn cta-primary text-base sm:text-lg px-7 sm:px-8 py-3.5 shadow-2xl inline-flex items-center gap-2.5 group">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Try BG Vanish Free
+                <span class="inline-block transition-transform group-hover:translate-x-0.5">&rarr;</span>
+              </button>
+              <span class="text-xs sm:text-sm text-white/50">or scroll for the demo &darr;</span>
+            </div>
+          </div>
+          <!-- 右侧:Bento 风格产品预览(原图 → 切割后效果) -->
+          <div class="relative">
+            <!-- 主图:切割后的产品图(透明 PNG 配棋盘背景) -->
+            <div class="checker-bg rounded-3xl shadow-2xl aspect-square overflow-hidden ring-1 ring-white/20 flex items-center justify-center p-8">
+              <img src="/img/demo-after-1.png" alt="AI background removal result - transparent PNG" class="max-w-full max-h-full object-contain drop-shadow-2xl">
+            </div>
+            <!-- 浮动小卡片:角标"Before/After"对比 -->
+            <div class="absolute -top-3 -right-3 bg-white/95 backdrop-blur rounded-2xl px-4 py-3 shadow-2xl ring-1 ring-white/40 hidden sm:flex items-center gap-3">
+              <div class="flex -space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 ring-2 ring-white"></div>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 ring-2 ring-white"></div>
+              </div>
+              <div class="text-xs">
+                <div class="font-bold text-gray-900">AI Magic</div>
+                <div class="text-gray-600">&lt; 5 seconds</div>
+              </div>
+            </div>
+            <!-- 浮动小卡片:底部"3-free credits"提示 -->
+            <div class="absolute -bottom-3 -left-3 bg-yellow-300 text-gray-900 rounded-full px-4 py-2 shadow-2xl font-bold text-sm hidden sm:block">
+              🎉 3 free credits
+            </div>
+          </div>
         </div>
       </section>
 
@@ -256,22 +360,22 @@
         <h2 class="text-center text-2xl md:text-3xl font-bold mb-2">Why Choose BG Vanish</h2>
         <p class="text-center text-white/50 mb-8 text-sm">Professional results without the professional price tag</p>
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+          <div class="feature-card text-center">
             <div class="text-4xl mb-3">🤖</div>
             <h3 class="text-lg font-bold mb-2">AI Precision</h3>
             <p class="text-white/60 text-[13px] leading-relaxed">Deep learning models handle hair, fur, and complex edges automatically</p>
           </div>
-          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+          <div class="feature-card text-center">
             <div class="text-4xl mb-3">⚡</div>
             <h3 class="text-lg font-bold mb-2">3-5 Seconds</h3>
             <p class="text-white/60 text-[13px] leading-relaxed">Most images processed in under 5 seconds — no waiting, no queues</p>
           </div>
-          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+          <div class="feature-card text-center">
             <div class="text-4xl mb-3">🔒</div>
             <h3 class="text-lg font-bold mb-2">Privacy First</h3>
             <p class="text-white/60 text-[13px] leading-relaxed">Images processed and deleted instantly — never stored or shared</p>
           </div>
-          <div class="glass rounded-2xl p-6 text-center hover:border-white/30 hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
+          <div class="feature-card text-center">
             <div class="text-4xl mb-3">🎨</div>
             <h3 class="text-lg font-bold mb-2">Custom Backgrounds</h3>
             <p class="text-white/60 text-[13px] leading-relaxed">Replace background with any color — perfect for product listings</p>
@@ -379,9 +483,9 @@
         <div class="pricing-card text-center">
           <h3 class="text-lg font-bold mb-1">Starter</h3>
           <p class="text-white/50 text-sm mb-4">Try it out</p>
-          <div class="text-4xl font-extrabold mb-1">$4.99</div>
+          <div class="price-display mb-1"><span class="currency">$</span>4<span class="cents">.99</span></div>
           <p class="text-white/50 text-sm mb-6">one-time</p>
-          <div class="text-3xl font-bold text-yellow-200 mb-4">40 <span class="text-base font-normal text-white/50">credits</span></div>
+          <div class="credits-display mb-4">40 <span class="text-base font-normal text-white/50">credits</span></div>
           <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
             <li>✓ $0.12 per image</li>
             <li>✓ PNG output</li>
@@ -394,9 +498,9 @@
           <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-sm font-extrabold px-4 py-1.5 rounded-full shadow-lg tracking-wide">⭐ MOST POPULAR</div>
           <h3 class="text-lg font-bold mb-1">Popular</h3>
           <p class="text-white/50 text-sm mb-4">Best value</p>
-          <div class="text-4xl font-extrabold mb-1">$9.99</div>
+          <div class="price-display mb-1"><span class="currency">$</span>9<span class="cents">.99</span></div>
           <p class="text-white/50 text-sm mb-6">one-time</p>
-          <div class="text-3xl font-bold text-yellow-200 mb-4">85 <span class="text-base font-normal text-white/50">credits</span></div>
+          <div class="credits-display mb-4">85 <span class="text-base font-normal text-white/50">credits</span></div>
           <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
             <li>✓ $0.12 per image</li>
             <li>✓ PNG output</li>
@@ -409,9 +513,9 @@
         <div class="pricing-card text-center">
           <h3 class="text-lg font-bold mb-1">Pro</h3>
           <p class="text-white/50 text-sm mb-4">Power users</p>
-          <div class="text-4xl font-extrabold mb-1">$23.99</div>
+          <div class="price-display mb-1"><span class="currency">$</span>23<span class="cents">.99</span></div>
           <p class="text-white/50 text-sm mb-6">one-time</p>
-          <div class="text-3xl font-bold text-yellow-200 mb-4">200 <span class="text-base font-normal text-white/50">credits</span></div>
+          <div class="credits-display mb-4">200 <span class="text-base font-normal text-white/50">credits</span></div>
           <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
             <li>✓ $0.12 per image</li>
             <li>✓ PNG output</li>
@@ -429,9 +533,9 @@
         <div class="pricing-card text-center">
           <h3 class="text-lg font-bold mb-1">Basic</h3>
           <p class="text-white/50 text-sm mb-4">For regular use</p>
-          <div class="text-4xl font-extrabold mb-1">$7.99<span class="text-lg font-normal text-white/50">/mo</span></div>
+          <div class="price-display mb-1"><span class="currency">$</span>7<span class="cents">.99</span><span class="text-lg font-normal text-white/50">/mo</span></div>
           <p class="text-white/50 text-sm mb-6">billed monthly</p>
-          <div class="text-3xl font-bold text-yellow-200 mb-4">60 <span class="text-base font-normal text-white/50">credits/month</span></div>
+          <div class="credits-display mb-4">60 <span class="text-base font-normal text-white/50">credits/month</span></div>
           <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
             <li>✓ 60 credits per month</li>
             <li>✓ Resets monthly</li>
@@ -445,9 +549,9 @@
           <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-gray-900 text-xs font-bold px-3 py-1 rounded-full">⭐ BEST VALUE</div>
           <h3 class="text-lg font-bold mb-1">Pro</h3>
           <p class="text-white/50 text-sm mb-4">For professionals</p>
-          <div class="text-4xl font-extrabold mb-1">$17.99<span class="text-lg font-normal text-white/50">/mo</span></div>
+          <div class="price-display mb-1"><span class="currency">$</span>17<span class="cents">.99</span><span class="text-lg font-normal text-white/50">/mo</span></div>
           <p class="text-white/50 text-sm mb-6">billed monthly</p>
-          <div class="text-3xl font-bold text-yellow-200 mb-4">150 <span class="text-base font-normal text-white/50">credits/month</span></div>
+          <div class="credits-display mb-4">150 <span class="text-base font-normal text-white/50">credits/month</span></div>
           <ul class="text-left text-sm text-white/70 space-y-2 mb-6">
             <li>✓ 150 credits per month</li>
             <li>✓ Resets monthly</li>
